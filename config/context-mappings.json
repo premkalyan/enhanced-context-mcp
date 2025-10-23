@@ -1,0 +1,72 @@
+{
+  "mappings": {
+    "story": {
+      "contexts": ["c-core-sdlc", "c-jira-management"],
+      "templates": ["epic-specification"],
+      "description": "User story and epic creation"
+    },
+    "testing": {
+      "contexts": ["c-core-sdlc", "c-testing-strategy"],
+      "templates": ["test-plan"],
+      "description": "Test planning and strategy"
+    },
+    "security": {
+      "contexts": ["c-core-sdlc", "c-pr-review"],
+      "templates": [],
+      "description": "Security reviews and audits"
+    },
+    "architecture": {
+      "contexts": ["c-core-sdlc", "c-pr-review", "c-architecture-generation"],
+      "templates": ["technical-architecture"],
+      "description": "Architecture design and documentation"
+    },
+    "pr-review": {
+      "contexts": ["c-core-sdlc", "c-pr-review", "c-git-workflows"],
+      "templates": [],
+      "description": "Pull request reviews"
+    },
+    "browser-testing": {
+      "contexts": ["c-core-sdlc", "c-browser-tools-testing"],
+      "templates": [],
+      "description": "Browser automation testing"
+    },
+    "project-planning": {
+      "contexts": ["c-core-sdlc", "c-project-management"],
+      "templates": ["project-plan"],
+      "description": "Project planning and management"
+    },
+    "story-breakdown": {
+      "contexts": ["c-core-sdlc", "c-jira-management"],
+      "templates": ["story-breakdown"],
+      "description": "Breaking down epics into stories"
+    },
+    "documentation": {
+      "contexts": ["c-core-sdlc", "c-confluence-docs"],
+      "templates": ["confluence-page"],
+      "description": "Technical documentation"
+    },
+    "flow-diagrams": {
+      "contexts": ["c-core-sdlc"],
+      "templates": ["flow-diagrams"],
+      "description": "Flow and sequence diagrams"
+    },
+    "infrastructure": {
+      "contexts": ["c-core-sdlc", "c-infrastructure-as-code", "c-cloud-data-engineering"],
+      "templates": ["infrastructure-diagrams"],
+      "description": "Infrastructure as code and cloud architecture"
+    }
+  },
+  "allowedQueryTypes": [
+    "story",
+    "testing",
+    "security",
+    "architecture",
+    "pr-review",
+    "browser-testing",
+    "project-planning",
+    "story-breakdown",
+    "documentation",
+    "flow-diagrams",
+    "infrastructure"
+  ]
+}
