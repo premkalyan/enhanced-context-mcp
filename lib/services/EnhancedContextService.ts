@@ -6,7 +6,16 @@
 import { ContextService } from './ContextService';
 import { TemplateService } from './TemplateService';
 import { AgentService } from './AgentService';
+import { ContextCombinationService } from './ContextCombinationService';
 import ConfigLoader from '../config/configLoader';
+import {
+  EnhancedQueryParameters,
+  SDLCStep,
+  TaskGuidance,
+  ContextCombination
+} from '../../types/enhanced-query.types';
+import fs from 'fs/promises';
+import path from 'path';
 
 export interface EnhancedContextResult {
   content: Array<{
@@ -14,6 +23,10 @@ export interface EnhancedContextResult {
     text: string;
   }>;
   isError?: boolean;
+  reasoning?: string;
+  guidance?: TaskGuidance;
+  sdlcChecklist?: SDLCStep[];
+  currentStep?: SDLCStep;
 }
 
 export interface ServiceStatus {
@@ -26,19 +39,21 @@ export interface ServiceStatus {
 }
 
 export class EnhancedContextService {
+  private readonly combinationService: ContextCombinationService;
+
   constructor(
     private readonly contextService: ContextService,
     private readonly templateService: TemplateService,
     private readonly agentService: AgentService
-  ) {}
+  ) {
+    this.combinationService = new ContextCombinationService();
+  }
 
   /**
-   * Load enhanced context based on query type
+   * Load enhanced context based on query parameters
+   * Now supports rich query parameters for intelligent context selection
    */
-  async loadEnhancedContext(args: {
-    query_type: string;
-    project_path?: string;
-  }): Promise<EnhancedContextResult> {
+  async loadEnhancedContext(args: EnhancedQueryParameters): Promise<EnhancedContextResult> {
     const { query_type, project_path } = args;
 
     try {
@@ -50,36 +65,66 @@ export class EnhancedContextService {
         );
       }
 
-      // Get context mapping
-      const mapping = ConfigLoader.getInstance().getMapping(query_type);
-      if (!mapping) {
-        throw new Error(`No mapping found for query type: ${query_type}`);
-      }
+      // Find best matching context combination
+      const combination = this.combinationService.findBestCombination(args);
+      const contextList = this.combinationService.getAllContexts(combination, args);
+      const reasoningArray = this.combinationService.explainCombination(combination, args);
+      const reasoning = reasoningArray.join('\n');
+
+      // Extract context names for loading
+      const contextNames = contextList.map(c => c.name);
 
       // Load contexts, templates, and agent in parallel
       const [contexts, templates, projectRules, agentSelection] = await Promise.all([
-        this.contextService.loadGlobalContexts(mapping.contexts),
-        this.templateService.loadTemplates(mapping.templates),
+        this.contextService.loadGlobalContexts(contextNames),
+        this.templateService.loadTemplates(combination.templates),
         this.contextService.loadProjectRules(project_path),
-        this.agentService.selectAgentForQueryType(query_type)
+        this.selectBestAgent(combination, args)
       ]);
 
+      // Add reasons to contexts
+      const contextsWithReasons = contexts.map(ctx => {
+        const contextInfo = contextList.find(c => c.name === ctx.name);
+        return {
+          ...ctx,
+          reason: contextInfo?.reason || 'Base context',
+          source: contextInfo?.source || 'base'
+        };
+      });
+
+      // Load SDLC checklist if requested
+      let sdlcChecklist: SDLCStep[] | undefined;
+      let currentStep: SDLCStep | undefined;
+      if (args.include_sdlc_checks) {
+        sdlcChecklist = await this.loadSDLCChecklist();
+        currentStep = this.determineCurrentStep(args, sdlcChecklist);
+      }
+
       // Format the response
-      const contextContent = contexts.map(ctx => `## ${ctx.name}\n${ctx.content}`).join('\n\n');
-      const projectContent = projectRules.map(rule => `## ${rule.name}\n${rule.content}`).join('\n\n');
+      const contextContent = contextsWithReasons
+        .map(ctx => `## ${ctx.name}\n**Reason**: ${ctx.reason}\n\n${ctx.content}`)
+        .join('\n\n');
+      const projectContent = projectRules
+        .map(rule => `## ${rule.name}\n${rule.content}`)
+        .join('\n\n');
       const templateContent = templates
         .map(tmpl => `## 📝 Template: ${tmpl.name}\n${tmpl.content}`)
         .join('\n\n---\n\n');
 
       const responseText = this.buildResponseText({
         query_type,
+        args,
+        combination,
+        reasoning,
         agentSelection,
         templates,
-        contexts,
+        contexts: contextsWithReasons,
         projectRules,
         contextContent,
         projectContent,
-        templateContent
+        templateContent,
+        sdlcChecklist,
+        currentStep
       });
 
       return {
@@ -88,7 +133,11 @@ export class EnhancedContextService {
             type: 'text',
             text: responseText
           }
-        ]
+        ],
+        reasoning,
+        guidance: combination.guidance,
+        sdlcChecklist,
+        currentStep
       };
     } catch (error) {
       const err = error as Error;
@@ -105,30 +154,201 @@ export class EnhancedContextService {
   }
 
   /**
+   * Select best agent considering both combination and query parameters
+   */
+  private async selectBestAgent(
+    combination: ContextCombination,
+    args: EnhancedQueryParameters
+  ): Promise<Awaited<ReturnType<AgentService['selectAgentForQueryType']>>> {
+    // Use agents from combination if specified
+    if (combination.agents && combination.agents.length > 0) {
+      const selectedAgent = await this.agentService.loadVishkarAgent(combination.agents[0]);
+      const availableAgents = await Promise.all(
+        combination.agents.slice(1).map(name => this.agentService.loadVishkarAgent(name))
+      );
+
+      // Get metadata for available agents
+      const availableMetadata = availableAgents
+        .filter(a => a !== null)
+        .map(a => ({
+          id: a!.id,
+          name: a!.name,
+          description: a!.description || '',
+          type: a!.type || 'technical',
+          model: a!.model
+        }));
+
+      return {
+        selected: selectedAgent,
+        available: availableMetadata,
+        reason: `Selected from context combination: ${combination.name}`
+      };
+    }
+
+    // Fallback to query type selection
+    return this.agentService.selectAgentForQueryType(args.query_type);
+  }
+
+  /**
+   * Load SDLC checklist from config
+   */
+  private async loadSDLCChecklist(): Promise<SDLCStep[]> {
+    try {
+      const checklistPath = path.join(process.cwd(), 'config', 'sdlc-checklist.json');
+      const content = await fs.readFile(checklistPath, 'utf-8');
+      const config = JSON.parse(content);
+      return config.sdlcSteps;
+    } catch (error) {
+      console.error('Error loading SDLC checklist:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Determine current SDLC step based on task intent
+   */
+  private determineCurrentStep(
+    args: EnhancedQueryParameters,
+    steps: SDLCStep[]
+  ): SDLCStep | undefined {
+    const intentToStep: Record<string, number> = {
+      'create': 1,      // Epic/Story Creation
+      'breakdown': 2,   // Story Breakdown
+      'plan': 3,        // Technical Design
+      'implement': 5,   // Implementation
+      'review': 8,      // Code Review
+      'test': 6         // Unit Testing
+    };
+
+    const stepNumber = args.task_intent ? intentToStep[args.task_intent] : undefined;
+    return stepNumber ? steps.find(s => s.step === stepNumber) : undefined;
+  }
+
+  /**
    * Build the formatted response text
    */
   private buildResponseText(data: {
     query_type: string;
+    args: EnhancedQueryParameters;
+    combination: ContextCombination;
+    reasoning: string;
     agentSelection: Awaited<ReturnType<AgentService['selectAgentForQueryType']>>;
     templates: Awaited<ReturnType<TemplateService['loadTemplates']>>;
-    contexts: Awaited<ReturnType<ContextService['loadGlobalContexts']>>;
+    contexts: Array<{ name: string; content: string; reason: string; source: string }>;
     projectRules: Awaited<ReturnType<ContextService['loadProjectRules']>>;
     contextContent: string;
     projectContent: string;
     templateContent: string;
+    sdlcChecklist?: SDLCStep[];
+    currentStep?: SDLCStep;
   }): string {
     const {
       query_type,
+      args,
+      combination,
+      reasoning,
       agentSelection,
       templates,
       contexts,
       projectRules,
       contextContent,
       projectContent,
-      templateContent
+      templateContent,
+      sdlcChecklist,
+      currentStep
     } = data;
 
-    let response = `Enhanced Context Loaded Successfully:\n\n## Query Type: ${query_type}\n\n`;
+    let response = `# Enhanced Context Loaded Successfully\n\n`;
+
+    // Add task understanding section
+    response += `## 🎯 Task Understanding\n\n`;
+    response += `**Query Type**: ${query_type}\n`;
+    if (args.task_intent) response += `**Task Intent**: ${args.task_intent}\n`;
+    if (args.scope) response += `**Scope**: ${args.scope}\n`;
+    if (args.complexity) response += `**Complexity**: ${args.complexity}\n`;
+    if (args.domain_focus && args.domain_focus.length > 0) {
+      response += `**Domain Focus**: ${args.domain_focus.join(', ')}\n`;
+    }
+    response += `\n**Context Combination**: ${combination.name}\n`;
+    response += `**Reasoning**: ${reasoning}\n\n`;
+
+    // Add SDLC current step if available
+    if (currentStep) {
+      response += `## 📋 Current SDLC Step\n\n`;
+      response += `**Step ${currentStep.step}**: ${currentStep.name}\n`;
+      response += `${currentStep.description}\n\n`;
+
+      // Add required checks for current step
+      const requiredChecks = currentStep.checks.filter(c => c.severity === 'required');
+      if (requiredChecks.length > 0) {
+        response += `**Required Checks**:\n`;
+        requiredChecks.forEach(check => {
+          const status = check.status === 'incomplete' ? '⏳' : '✅';
+          response += `- ${status} ${check.description}\n`;
+        });
+        response += '\n';
+      }
+
+      // Add artifacts expected
+      if (currentStep.artifacts.length > 0) {
+        response += `**Expected Artifacts**: ${currentStep.artifacts.join(', ')}\n\n`;
+      }
+
+      // Add next steps
+      if (currentStep.nextSteps.length > 0) {
+        response += `**Next Steps**: ${currentStep.nextSteps.join(', ')}\n\n`;
+      }
+    }
+
+    // Add task guidance if available
+    if (combination.guidance) {
+      response += `## 📚 Task Guidance\n\n`;
+
+      // Jira-specific guidance
+      if (combination.guidance.epicPrefixRequired) {
+        response += `**Epic Prefix Format**: ${combination.guidance.epicPrefixFormat}\n`;
+      }
+      if (combination.guidance.storyStructure) {
+        response += `**Story Structure**: ${combination.guidance.storyStructure}\n`;
+      }
+      if (combination.guidance.acceptanceCriteriaFormat) {
+        response += `**Acceptance Criteria**: ${combination.guidance.acceptanceCriteriaFormat}\n`;
+      }
+
+      // Quality checks
+      if (combination.guidance.qualityChecks.length > 0) {
+        response += `\n**Quality Checks**:\n`;
+        combination.guidance.qualityChecks.forEach(check => {
+          response += `- ${check}\n`;
+        });
+      }
+
+      // Common mistakes
+      if (combination.guidance.commonMistakes.length > 0) {
+        response += `\n**Common Mistakes to Avoid**:\n`;
+        combination.guidance.commonMistakes.forEach(mistake => {
+          response += `- ⚠️ ${mistake}\n`;
+        });
+      }
+
+      // Best practices
+      if (combination.guidance.bestPractices.length > 0) {
+        response += `\n**Best Practices**:\n`;
+        combination.guidance.bestPractices.forEach(practice => {
+          response += `- ✨ ${practice}\n`;
+        });
+      }
+
+      // Prerequisites
+      if (combination.guidance.prerequisites && combination.guidance.prerequisites.length > 0) {
+        response += `\n**Prerequisites**:\n`;
+        combination.guidance.prerequisites.forEach(prereq => {
+          response += `- ${prereq}\n`;
+        });
+      }
+
+      response += '\n';
+    }
 
     // Add agent information
     if (agentSelection.selected) {
@@ -152,12 +372,13 @@ export class EnhancedContextService {
       response += '\n\n';
     }
 
-    // Add global contexts
-    response += `## Global WAMA Contexts:\n${contextContent}\n\n`;
+    // Add global contexts with reasons
+    response += `## 🌍 Loaded Contexts (${contexts.length})\n\n`;
+    response += contextContent + '\n\n';
 
     // Add project rules
     if (projectRules.length > 0) {
-      response += `## Project-Specific Rules:\n${projectContent}\n\n`;
+      response += `## 📁 Project-Specific Rules:\n${projectContent}\n\n`;
     }
 
     // Add templates content
@@ -165,14 +386,37 @@ export class EnhancedContextService {
       response += `## 📝 VISHKAR Templates:\n\n${templateContent}\n\n`;
     }
 
+    // Add SDLC checklist if requested
+    if (sdlcChecklist && sdlcChecklist.length > 0) {
+      response += `## 📊 Complete 13-Step SDLC Checklist\n\n`;
+      sdlcChecklist.forEach(step => {
+        const isCurrent = currentStep && step.step === currentStep.step;
+        const marker = isCurrent ? '➡️ ' : '';
+        response += `${marker}**Step ${step.step}: ${step.name}**\n`;
+
+        if (isCurrent) {
+          response += `${step.description}\n`;
+          const requiredChecks = step.checks.filter(c => c.severity === 'required');
+          if (requiredChecks.length > 0) {
+            response += `Checks: ${requiredChecks.map(c => c.description).join(', ')}\n`;
+          }
+        }
+        response += '\n';
+      });
+    }
+
     // Add summary
-    response += `## Summary:\n`;
-    response += `- Loaded ${contexts.length} global contexts: ${contexts.map(c => c.name).join(', ')}\n`;
+    response += `## 📊 Summary:\n`;
+    response += `- Context Combination: ${combination.name}\n`;
+    response += `- Loaded ${contexts.length} contexts (${contexts.filter(c => c.source === 'base').length} base + ${contexts.filter(c => c.source === 'conditional').length} conditional)\n`;
     response += `- Loaded ${templates.length} templates: ${templates.map(t => t.name).join(', ')}\n`;
-    response += `- Loaded ${projectRules.length} project-specific rules: ${projectRules.map(r => r.name).join(', ')}\n`;
-    response += `- Agent selection: ${agentSelection.selected ? `${agentSelection.selected.name} (auto-selected)` : 'None selected'}\n`;
-    response += `- Available agents: ${agentSelection.available.length} specialists available\n`;
-    response += `- Enhanced MCP processing enabled with agent-aware context and templates\n\n`;
+    response += `- Loaded ${projectRules.length} project-specific rules\n`;
+    response += `- Agent: ${agentSelection.selected ? `${agentSelection.selected.name} (auto-selected)` : 'None'}\n`;
+    response += `- Available agents: ${agentSelection.available.length} specialists\n`;
+    if (currentStep) {
+      response += `- Current SDLC Step: ${currentStep.step}. ${currentStep.name}\n`;
+    }
+    response += `- Intelligent context selection enabled with task-aware combinations\n\n`;
     response += `---\n`;
     response += `**IMPORTANT: Only use MCP tools for services that are properly configured.**`;
 

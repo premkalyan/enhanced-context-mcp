@@ -1,0 +1,406 @@
+{
+  "combinations": [
+    {
+      "id": "story-create-epic-complex",
+      "name": "Create Complex Epic",
+      "description": "Creating a large epic with multiple stories, architectural considerations, and quality requirements",
+      "queryType": "story",
+      "taskIntent": "create",
+      "scope": "epic",
+      "complexity": "complex",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-jira-management"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "complexity === 'complex' || complexity === 'critical'",
+          "contexts": ["c-architecture-generation", "c-project-management"],
+          "reason": "Complex epics require architectural planning and project management"
+        },
+        {
+          "condition": "domain_focus.includes('security')",
+          "contexts": ["c-security-review"],
+          "reason": "Security domain requires security review context"
+        },
+        {
+          "condition": "domain_focus.includes('testing')",
+          "contexts": ["c-testing-strategy"],
+          "reason": "Testing focus requires comprehensive testing strategy"
+        }
+      ],
+      "templates": ["t-epic-specification"],
+      "agents": ["a-project-manager", "a-product-manager"],
+      "guidance": {
+        "epicPrefixRequired": true,
+        "epicPrefixFormat": "PROJECT-EPIC-###",
+        "storyStructure": "As a [user type], I want [functionality], so that [business value]",
+        "acceptanceCriteriaFormat": "Given/When/Then format with clear success criteria",
+        "qualityChecks": [
+          "Epic has clear business value statement",
+          "Epic is scoped to deliverable increment",
+          "Epic has defined acceptance criteria",
+          "Technical dependencies identified",
+          "Epic linked to business objective/theme"
+        ],
+        "commonMistakes": [
+          "Epic too large (should be deliverable within 1-2 sprints)",
+          "Missing acceptance criteria",
+          "No link to business objectives",
+          "Technical implementation details in epic (belong in stories)"
+        ],
+        "bestPractices": [
+          "Start with user outcome, not technical solution",
+          "Include success metrics",
+          "Define clear scope boundaries",
+          "Identify external dependencies early",
+          "Review with stakeholders before story breakdown"
+        ],
+        "prerequisites": [
+          "Business objective/theme defined",
+          "Stakeholders identified",
+          "High-level requirements gathered"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "story-breakdown-epic",
+      "name": "Break Down Epic into Stories",
+      "description": "Taking an existing epic and creating detailed user stories",
+      "queryType": "story",
+      "taskIntent": "breakdown",
+      "scope": "epic",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-jira-management"
+      ],
+      "conditionalContexts": [],
+      "templates": ["t-story-breakdown"],
+      "agents": ["a-product-manager", "a-backend-architect"],
+      "guidance": {
+        "epicPrefixRequired": false,
+        "storyStructure": "As a [user type], I want [functionality], so that [business value]",
+        "acceptanceCriteriaFormat": "Given/When/Then with testable conditions",
+        "qualityChecks": [
+          "All stories link to parent epic",
+          "Stories are independently deliverable",
+          "Stories follow INVEST principles",
+          "Each story has acceptance criteria",
+          "Story points estimated",
+          "Technical dependencies identified"
+        ],
+        "commonMistakes": [
+          "Stories too large (should fit in one sprint)",
+          "Technical tasks disguised as user stories",
+          "Missing acceptance criteria",
+          "No story point estimates",
+          "Dependencies not documented"
+        ],
+        "bestPractices": [
+          "Keep stories small and focused",
+          "One story per user/feature interaction",
+          "Include both happy path and error scenarios",
+          "Define done criteria clearly",
+          "Sequence stories by dependency order"
+        ],
+        "prerequisites": [
+          "Epic exists and is approved",
+          "Epic has clear acceptance criteria",
+          "Technical architecture reviewed"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "architecture-create-technical",
+      "name": "Create Technical Architecture",
+      "description": "Designing technical architecture for a system or feature",
+      "queryType": "architecture",
+      "taskIntent": "create",
+      "scope": "epic",
+      "complexity": "complex",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-architecture-generation",
+        "c-pr-review"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('cloud') || domain_focus.includes('infrastructure')",
+          "contexts": ["c-infrastructure-as-code", "c-cloud-data-engineering"],
+          "reason": "Cloud/infrastructure focus requires IaC and cloud engineering context"
+        },
+        {
+          "condition": "output_format === 'confluence'",
+          "contexts": ["c-confluence-docs"],
+          "reason": "Confluence output requires documentation context"
+        }
+      ],
+      "templates": ["t-technical-architecture"],
+      "agents": ["a-cloud-architect", "a-backend-architect", "a-architect-review"],
+      "guidance": {
+        "qualityChecks": [
+          "Architecture addresses all functional requirements",
+          "Non-functional requirements (performance, security, scalability) defined",
+          "Technology choices justified",
+          "Integration points documented",
+          "Data flow diagrams included",
+          "Security architecture reviewed",
+          "Scalability considerations documented"
+        ],
+        "commonMistakes": [
+          "Over-engineering for current needs",
+          "Ignoring non-functional requirements",
+          "No consideration for future extensibility",
+          "Missing security considerations",
+          "No performance baselines"
+        ],
+        "bestPractices": [
+          "Start with requirements, not technology",
+          "Document architectural decisions and rationale",
+          "Include multiple views (logical, physical, deployment)",
+          "Identify risks and mitigation strategies",
+          "Plan for monitoring and observability"
+        ],
+        "prerequisites": [
+          "Business requirements defined",
+          "Non-functional requirements gathered",
+          "Budget and constraints understood"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "testing-create-plan",
+      "name": "Create Test Plan",
+      "description": "Creating comprehensive test plan for a feature or system",
+      "queryType": "testing",
+      "taskIntent": "create",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-testing-strategy"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('browser') || domain_focus.includes('e2e')",
+          "contexts": ["c-browser-tools-testing"],
+          "reason": "Browser/E2E testing requires browser tools context"
+        }
+      ],
+      "templates": ["t-test-plan"],
+      "agents": ["a-test-automator", "a-performance-engineer"],
+      "guidance": {
+        "qualityChecks": [
+          "Test strategy defined (unit, integration, e2e)",
+          "Test coverage targets set",
+          "Test data strategy documented",
+          "Test environment requirements defined",
+          "Automation approach specified",
+          "Performance test scenarios included"
+        ],
+        "commonMistakes": [
+          "Only focusing on happy path scenarios",
+          "Insufficient test coverage",
+          "No performance/load testing",
+          "Missing security test cases",
+          "No test data management strategy"
+        ],
+        "bestPractices": [
+          "Test pyramid approach (more unit, fewer E2E)",
+          "Include negative test cases",
+          "Plan for test data management",
+          "Automate regression tests",
+          "Include accessibility testing"
+        ],
+        "prerequisites": [
+          "Feature/system requirements available",
+          "Technical architecture defined",
+          "Test environment available"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "pr-review-code",
+      "name": "Code Review / PR Review",
+      "description": "Reviewing pull requests for quality, security, and best practices",
+      "queryType": "pr-review",
+      "taskIntent": "review",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-pr-review",
+        "c-git-workflows"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('security')",
+          "contexts": ["c-security-review"],
+          "reason": "Security-focused reviews require security context"
+        },
+        {
+          "condition": "domain_focus.includes('architecture')",
+          "contexts": ["c-architecture-generation"],
+          "reason": "Architectural reviews require architecture context"
+        }
+      ],
+      "templates": [],
+      "agents": ["a-code-reviewer", "a-security-auditor", "a-architect-review"],
+      "guidance": {
+        "qualityChecks": [
+          "Code follows project conventions",
+          "Tests included and passing",
+          "Documentation updated",
+          "No security vulnerabilities",
+          "Performance implications considered",
+          "Breaking changes documented"
+        ],
+        "commonMistakes": [
+          "Only reviewing code, not tests",
+          "Missing security review",
+          "No performance consideration",
+          "Documentation not updated",
+          "Breaking changes not communicated"
+        ],
+        "bestPractices": [
+          "Review in small chunks",
+          "Check tests first",
+          "Look for security issues",
+          "Verify error handling",
+          "Check for code duplication"
+        ],
+        "prerequisites": [
+          "PR description includes context",
+          "CI checks passing",
+          "Linked to issue/story"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "infrastructure-create-terraform",
+      "name": "Create Infrastructure as Code",
+      "description": "Creating Terraform/IaC configuration for infrastructure",
+      "queryType": "infrastructure",
+      "taskIntent": "create",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-infrastructure-as-code"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('cloud')",
+          "contexts": ["c-cloud-data-engineering"],
+          "reason": "Cloud infrastructure requires cloud engineering context"
+        }
+      ],
+      "templates": ["t-terraform-module", "t-infrastructure-diagrams"],
+      "agents": ["a-terraform-specialist", "a-cloud-architect", "a-deployment-engineer"],
+      "guidance": {
+        "qualityChecks": [
+          "Infrastructure follows security best practices",
+          "State management configured",
+          "Modules are reusable",
+          "Variables properly defined",
+          "Documentation included",
+          "Disaster recovery considered"
+        ],
+        "commonMistakes": [
+          "Hardcoded values instead of variables",
+          "No remote state configuration",
+          "Missing security groups/policies",
+          "No backup/disaster recovery plan",
+          "Insufficient monitoring/alerting"
+        ],
+        "bestPractices": [
+          "Use modules for reusability",
+          "Separate environments (dev/staging/prod)",
+          "Use remote state with locking",
+          "Tag all resources",
+          "Plan for cost optimization"
+        ],
+        "prerequisites": [
+          "Cloud provider account configured",
+          "Access permissions granted",
+          "Architecture design approved"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "documentation-create-confluence",
+      "name": "Create Confluence Documentation",
+      "description": "Creating technical or process documentation in Confluence",
+      "queryType": "documentation",
+      "taskIntent": "create",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-confluence-docs"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('architecture')",
+          "contexts": ["c-architecture-generation"],
+          "reason": "Architecture documentation requires architecture context"
+        },
+        {
+          "condition": "domain_focus.includes('api')",
+          "contexts": ["c-pr-review"],
+          "reason": "API documentation benefits from code review context"
+        }
+      ],
+      "templates": ["t-confluence-page"],
+      "agents": ["a-documentation-specialist", "a-backend-architect"],
+      "guidance": {
+        "qualityChecks": [
+          "Documentation is clear and concise",
+          "Code examples included where appropriate",
+          "Diagrams used for complex concepts",
+          "Links to related documentation",
+          "Version/date information included",
+          "Contact information for questions"
+        ],
+        "commonMistakes": [
+          "Too technical for audience",
+          "No visual aids (diagrams)",
+          "Outdated information",
+          "Missing examples",
+          "No clear structure"
+        ],
+        "bestPractices": [
+          "Know your audience",
+          "Use diagrams liberally",
+          "Include examples",
+          "Keep it up to date",
+          "Link to related docs"
+        ],
+        "prerequisites": [
+          "Subject matter is finalized",
+          "Target audience identified",
+          "Review process defined"
+        ],
+        "dependencies": []
+      }
+    }
+  ],
+  "defaultCombination": {
+    "id": "default",
+    "name": "Default Context Combination",
+    "description": "Fallback when no specific combination matches",
+    "baseContexts": ["c-core-sdlc"],
+    "conditionalContexts": [],
+    "templates": [],
+    "agents": [],
+    "guidance": {
+      "qualityChecks": [
+        "Requirements clearly defined",
+        "Deliverables specified",
+        "Timeline reasonable"
+      ],
+      "commonMistakes": [],
+      "bestPractices": [],
+      "prerequisites": [],
+      "dependencies": []
+    }
+  }
+}

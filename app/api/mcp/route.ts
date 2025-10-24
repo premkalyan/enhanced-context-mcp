@@ -11,7 +11,7 @@ import ConfigLoader from '@/lib/config/configLoader';
 const TOOLS = [
   {
     name: 'load_enhanced_context',
-    description: 'Load global WAMA contexts, templates, and project-specific rules for enhanced MCP processing. Automatically loads appropriate templates based on query type.',
+    description: 'Load global WAMA contexts, templates, and project-specific rules for enhanced MCP processing. Now supports rich query parameters for intelligent context selection based on task intent, scope, complexity, and domain focus. Includes 13-step SDLC guidance and task-specific quality checks.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -19,6 +19,42 @@ const TOOLS = [
           type: 'string',
           enum: ConfigLoader.getInstance().getAllowedQueryTypes(),
           description: 'Type of user query to load appropriate contexts and templates'
+        },
+        task_intent: {
+          type: 'string',
+          enum: ['create', 'refine', 'breakdown', 'review', 'plan', 'implement'],
+          description: 'What you want to do: create (new work), refine (improve existing), breakdown (split into smaller parts), review (evaluate), plan (design), implement (code)'
+        },
+        scope: {
+          type: 'string',
+          enum: ['epic', 'story', 'subtask', 'portfolio', 'theme', 'spike'],
+          description: 'Scope of work: epic (large feature), story (user story), subtask (small task), portfolio (multiple epics), theme (business objective), spike (research)'
+        },
+        complexity: {
+          type: 'string',
+          enum: ['simple', 'medium', 'complex', 'critical'],
+          description: 'Complexity level: simple (straightforward), medium (moderate effort), complex (requires architecture), critical (high-risk/security)'
+        },
+        output_format: {
+          type: 'string',
+          enum: ['jira', 'confluence', 'github', 'gitlab'],
+          description: 'Where the output will go: jira (Jira tickets), confluence (documentation), github/gitlab (PRs/issues)'
+        },
+        include_sdlc_checks: {
+          type: 'boolean',
+          description: 'Include 13-step SDLC checklist with current step guidance (default: false)'
+        },
+        domain_focus: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['security', 'payments', 'compliance', 'performance', 'accessibility', 'data', 'infrastructure', 'api', 'frontend', 'backend']
+          },
+          description: 'Domain areas that need special attention (e.g., ["security", "payments"] for payment feature with security concerns)'
+        },
+        user_query: {
+          type: 'string',
+          description: 'Original user query for semantic understanding (optional)'
         },
         project_path: {
           type: 'string',

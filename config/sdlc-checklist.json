@@ -1,0 +1,506 @@
+{
+  "sdlcSteps": [
+    {
+      "step": 1,
+      "name": "Epic/Story Creation",
+      "description": "Create epic or user story in Jira with proper format and structure",
+      "checks": [
+        {
+          "id": "epic-prefix",
+          "description": "Epic has proper prefix format (e.g., PROJECT-EPIC-###)",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "business-value",
+          "description": "Clear business value statement included",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "acceptance-criteria",
+          "description": "Acceptance criteria defined in Given/When/Then format",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "epic-scope",
+          "description": "Epic is appropriately scoped (deliverable in 1-2 sprints)",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "theme-link",
+          "description": "Epic linked to business theme/objective",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": true
+        }
+      ],
+      "artifacts": ["Epic in Jira", "Business value statement", "Acceptance criteria"],
+      "nextSteps": ["Break down epic into user stories", "Identify technical dependencies"]
+    },
+    {
+      "step": 2,
+      "name": "Story Breakdown",
+      "description": "Break epic into detailed user stories following INVEST principles",
+      "checks": [
+        {
+          "id": "story-format",
+          "description": "All stories follow 'As a... I want... So that...' format",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "story-size",
+          "description": "Each story is independently deliverable within one sprint",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "story-acceptance",
+          "description": "Each story has testable acceptance criteria",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "story-points",
+          "description": "Story points estimated for each story",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "epic-link",
+          "description": "All stories linked to parent epic",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        }
+      ],
+      "artifacts": ["User stories in Jira", "Story point estimates", "Dependencies documented"],
+      "nextSteps": ["Technical design for complex stories", "Sprint planning"]
+    },
+    {
+      "step": 3,
+      "name": "Technical Design",
+      "description": "Create technical design and architecture for implementation",
+      "checks": [
+        {
+          "id": "architecture-diagram",
+          "description": "Architecture diagram created showing components and data flow",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "api-design",
+          "description": "API contracts defined (if applicable)",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "data-model",
+          "description": "Data model designed and reviewed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "tech-choices",
+          "description": "Technology choices documented with rationale",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        },
+        {
+          "id": "security-review",
+          "description": "Security implications reviewed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Architecture document", "API specifications", "Data model", "Security assessment"],
+      "nextSteps": ["Development environment setup", "Create technical tasks"]
+    },
+    {
+      "step": 4,
+      "name": "Development Setup",
+      "description": "Set up development environment and repository structure",
+      "checks": [
+        {
+          "id": "repo-structure",
+          "description": "Repository structure follows project conventions",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "dev-dependencies",
+          "description": "Development dependencies installed and documented",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "linting-configured",
+          "description": "Code linting and formatting configured",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "env-setup",
+          "description": "Environment variables documented in .env.example",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        }
+      ],
+      "artifacts": ["Repository structure", "package.json/requirements.txt", "Linting config", ".env.example"],
+      "nextSteps": ["Start implementation", "Create feature branch"]
+    },
+    {
+      "step": 5,
+      "name": "Implementation",
+      "description": "Implement the feature following coding standards and best practices",
+      "checks": [
+        {
+          "id": "code-standards",
+          "description": "Code follows project coding standards",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "error-handling",
+          "description": "Proper error handling implemented",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "logging",
+          "description": "Appropriate logging added",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        },
+        {
+          "id": "documentation",
+          "description": "Code documentation (comments, JSDoc) added",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Implemented code", "Error handling", "Logging", "Code documentation"],
+      "nextSteps": ["Write unit tests", "Code self-review"]
+    },
+    {
+      "step": 6,
+      "name": "Unit Testing",
+      "description": "Write comprehensive unit tests for the implementation",
+      "checks": [
+        {
+          "id": "test-coverage",
+          "description": "Unit test coverage >80%",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "edge-cases",
+          "description": "Edge cases and error scenarios tested",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "tests-passing",
+          "description": "All tests passing",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "test-documentation",
+          "description": "Test cases documented and clear",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Unit tests", "Test coverage report", "Test documentation"],
+      "nextSteps": ["Integration testing", "Create pull request"]
+    },
+    {
+      "step": 7,
+      "name": "Integration Testing",
+      "description": "Test integration with other components and services",
+      "checks": [
+        {
+          "id": "integration-tests",
+          "description": "Integration tests written and passing",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "api-tests",
+          "description": "API contract tests passing (if applicable)",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "data-migration",
+          "description": "Data migration tested (if applicable)",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Integration tests", "API test results", "Migration scripts"],
+      "nextSteps": ["Create pull request", "Request code review"]
+    },
+    {
+      "step": 8,
+      "name": "Code Review",
+      "description": "Peer review of code, tests, and documentation",
+      "checks": [
+        {
+          "id": "pr-created",
+          "description": "Pull request created with clear description",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "ci-passing",
+          "description": "All CI checks passing",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "reviewer-assigned",
+          "description": "Appropriate reviewer(s) assigned",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "review-complete",
+          "description": "Code review completed and approved",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "feedback-addressed",
+          "description": "All review feedback addressed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Pull request", "Code review comments", "Updated code"],
+      "nextSteps": ["Merge to main branch", "Deploy to staging"]
+    },
+    {
+      "step": 9,
+      "name": "Deployment to Staging",
+      "description": "Deploy to staging environment for QA testing",
+      "checks": [
+        {
+          "id": "staging-deployed",
+          "description": "Code deployed to staging environment",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "smoke-tests",
+          "description": "Smoke tests passing on staging",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "config-verified",
+          "description": "Staging configuration verified",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Staging deployment", "Smoke test results", "Deployment logs"],
+      "nextSteps": ["QA testing", "User acceptance testing"]
+    },
+    {
+      "step": 10,
+      "name": "QA Testing",
+      "description": "Quality assurance testing on staging environment",
+      "checks": [
+        {
+          "id": "test-cases-executed",
+          "description": "All test cases executed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "acceptance-criteria-met",
+          "description": "Acceptance criteria validated",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "bugs-fixed",
+          "description": "All critical/major bugs fixed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "regression-tests",
+          "description": "Regression tests passing",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        }
+      ],
+      "artifacts": ["QA test results", "Bug reports", "Test evidence"],
+      "nextSteps": ["User acceptance testing", "Production deployment plan"]
+    },
+    {
+      "step": 11,
+      "name": "User Acceptance Testing",
+      "description": "Validation by product owner and/or end users",
+      "checks": [
+        {
+          "id": "demo-completed",
+          "description": "Feature demonstrated to stakeholders",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "user-feedback",
+          "description": "User feedback collected and addressed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "product-owner-approval",
+          "description": "Product owner approval received",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Demo recording", "User feedback", "Approval sign-off"],
+      "nextSteps": ["Production deployment", "Documentation"]
+    },
+    {
+      "step": 12,
+      "name": "Production Deployment",
+      "description": "Deploy to production environment",
+      "checks": [
+        {
+          "id": "deployment-plan",
+          "description": "Deployment plan documented and reviewed",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "rollback-plan",
+          "description": "Rollback plan prepared",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "deployed-to-prod",
+          "description": "Successfully deployed to production",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "prod-smoke-tests",
+          "description": "Production smoke tests passing",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "monitoring-configured",
+          "description": "Monitoring and alerts configured",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Production deployment", "Deployment logs", "Monitoring dashboard"],
+      "nextSteps": ["Post-deployment monitoring", "Documentation updates"]
+    },
+    {
+      "step": 13,
+      "name": "Documentation & Closure",
+      "description": "Complete documentation and close the epic/story",
+      "checks": [
+        {
+          "id": "user-docs-updated",
+          "description": "User documentation updated (if applicable)",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        },
+        {
+          "id": "tech-docs-updated",
+          "description": "Technical documentation updated",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": false
+        },
+        {
+          "id": "confluence-updated",
+          "description": "Confluence pages updated (if applicable)",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        },
+        {
+          "id": "story-closed",
+          "description": "Story/epic marked as complete in Jira",
+          "status": "incomplete",
+          "severity": "required",
+          "automatable": true
+        },
+        {
+          "id": "retro-completed",
+          "description": "Retrospective feedback captured",
+          "status": "incomplete",
+          "severity": "recommended",
+          "automatable": false
+        }
+      ],
+      "artifacts": ["Updated documentation", "Closed Jira tickets", "Retrospective notes"],
+      "nextSteps": ["Monitor in production", "Address user feedback"]
+    }
+  ]
+}
