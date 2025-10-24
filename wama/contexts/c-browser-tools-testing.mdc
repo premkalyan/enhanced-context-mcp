@@ -1,0 +1,216 @@
+# Browser Tools Testing - Agent Chrome Profile
+
+##  Purpose
+Dedicated Chrome profile for AI agents to test web applications with automatic DevTools and console log capture via BrowserTools MCP.
+
+##  Agent Chrome Profile
+
+### Location
+- **Profile Directory**: `~/.chrome-agent-profile/AgentTesting`
+- **Launcher Script**: `~/.chrome-agent-profile/start-agent-chrome.sh`
+- **Browser Tools MCP**: `/Users/premkalyan/code/Prometheus/mcp-servers/MCP-for-agents/browser-tools-mcp/`
+
+### Key Features
+-  **DevTools Auto-Open**: Every tab opens with DevTools enabled
+-  **Isolated Profile**: Separate from personal Chrome browsing
+-  **Agent-Friendly**: Disabled security restrictions for testing
+-  **Auto-Logging**: Detailed Chrome logs saved to `~/.chrome-agent-profile/chrome.log`
+-  **Extension Pre-Installed**: BrowserTools MCP extension already loaded
+
+##  How Agents Should Use This
+
+### Quick Launch (Recommended)
+```bash
+cd /Users/premkalyan/code/Prometheus/mcp-servers/MCP-for-agents/browser-tools-mcp
+./start-agent-testing.sh [URL]
+```
+
+**What This Does:**
+1. Checks if browser-tools-server is running (starts it if not)
+2. Launches Agent Chrome profile with DevTools auto-enabled
+3. Opens the specified URL (defaults to http://localhost:3000)
+4. Makes all MCP browser tools immediately available
+
+### Examples
+```bash
+# Test local development server
+./start-agent-testing.sh http://localhost:6600
+
+# Test admin panel
+./start-agent-testing.sh http://localhost:6600/admin
+
+# Test staging environment
+./start-agent-testing.sh https://staging.app.com
+
+# Test production
+./start-agent-testing.sh https://app.com
+```
+
+### Manual Launch (If Needed)
+```bash
+# Start just the Chrome profile
+~/.chrome-agent-profile/start-agent-chrome.sh [URL]
+```
+
+##  Available MCP Tools
+
+Once the Agent Chrome profile is running, these tools are available:
+
+### Core Browser Tools
+- **mcp_browser-tools_getConsoleLogs** - Get all console logs
+- **mcp_browser-tools_getConsoleErrors** - Get only error logs
+- **mcp_browser-tools_getNetworkLogs** - Get all network requests
+- **mcp_browser-tools_getNetworkErrors** - Get failed network requests
+- **mcp_browser-tools_takeScreenshot** - Capture current page screenshot
+- **mcp_browser-tools_getSelectedElement** - Get currently selected DOM element
+- **mcp_browser-tools_wipeLogs** - Clear all stored logs
+
+### Audit Tools
+- **mcp_browser-tools_runAuditMode** - Run complete audit suite
+- **mcp_browser-tools_runNextJSAudit** - NextJS-specific SEO analysis
+
+##  Agent Workflow Patterns
+
+### Pattern 1: Code Change → Test → Capture Logs
+```bash
+# 1. Agent makes code changes
+echo "Modified frontend/components/Button.tsx"
+
+# 2. Start testing environment
+cd /Users/premkalyan/code/Prometheus/mcp-servers/MCP-for-agents/browser-tools-mcp
+./start-agent-testing.sh http://localhost:6600
+
+# 3. DevTools are already open - use MCP tools
+mcp_browser-tools_getConsoleLogs
+mcp_browser-tools_takeScreenshot
+```
+
+### Pattern 2: Bug Investigation
+```bash
+# 1. Launch app in agent Chrome
+./start-agent-testing.sh http://localhost:6600/problem-page
+
+# 2. Reproduce the issue (manually or with automation)
+
+# 3. Capture diagnostics
+mcp_browser-tools_getConsoleErrors  # Check for JS errors
+mcp_browser-tools_getNetworkErrors  # Check for failed requests
+mcp_browser-tools_takeScreenshot    # Visual evidence
+```
+
+### Pattern 3: Comprehensive Audit
+```bash
+# 1. Launch application
+./start-agent-testing.sh https://app.com
+
+# 2. Run complete audit suite
+mcp_browser-tools_runAuditMode
+
+# 3. Analyze results and make fixes
+
+# 4. Re-run audit to verify improvements
+mcp_browser-tools_runAuditMode
+```
+
+##  Benefits for Agents
+
+### Immediate Testing
+- **No Setup Required**: Extension already installed, DevTools already open
+- **One Command**: `./start-agent-testing.sh [URL]` starts everything
+- **Instant Access**: MCP tools work immediately after launch
+
+### Isolated Environment
+- **Won't Affect Personal Browsing**: Separate Chrome profile
+- **Clean State**: Fresh profile for each testing session
+- **Debug-Friendly**: Detailed logs and console access
+
+### Seamless Integration
+- **MCP Native**: All tools available via MCP protocol
+- **No Manual Steps**: Automated connection to browser-tools-server
+- **Auto-Recovery**: Server auto-starts if not running
+
+##  Server Management
+
+### Check Server Status
+```bash
+# Health check
+curl http://localhost:3025/health
+
+# Docker status
+docker ps | grep browser-tools-server
+```
+
+### Restart Server (If Needed)
+```bash
+cd /Users/premkalyan/code/Prometheus/mcp-servers/MCP-for-agents/browser-tools-mcp
+docker-compose restart browser-tools-server
+```
+
+### View Server Logs
+```bash
+docker-compose logs -f browser-tools-server
+```
+
+##  Important Notes
+
+### DevTools Must Be Open
+- The BrowserTools extension ONLY captures logs when DevTools are open
+- Agent Chrome profile ensures DevTools auto-open on every tab
+- If DevTools close accidentally, re-open them (Cmd+Option+I on macOS)
+
+### One Tab at a Time
+- Extension works best with one active DevTools tab
+- Close other DevTools tabs if logs aren't capturing
+
+### URL Requirements
+- Must specify full URL including protocol: `http://localhost:6600`
+- Partial URLs won't work: `localhost:6600`
+
+##  Pre-Launch Checklist
+
+Before using browser tools, ensure:
+1.  Browser-tools-server is running (port 3025)
+2.  Agent Chrome profile is created (run `create-agent-chrome-profile.sh` once)
+3.  BrowserTools extension is installed in agent profile
+4.  Chrome is launched via agent profile scripts (not manually)
+
+##  Troubleshooting
+
+### Extension Not Connecting
+```bash
+# 1. Check server is running
+curl http://localhost:3025/health
+
+# 2. Restart browser-tools-server
+docker-compose restart browser-tools-server
+
+# 3. Close and relaunch agent Chrome
+pkill -f "chrome.*chrome-agent-profile"
+./start-agent-testing.sh [URL]
+```
+
+### No Logs Captured
+1. **Ensure DevTools are open** (they should auto-open)
+2. **Check BrowserToolsMCP panel** in DevTools
+3. **Verify connection status** in the panel
+4. **Try wipeLogs** and refresh the page
+
+### Chrome Won't Start
+```bash
+# Kill existing Chrome processes
+pkill -f "chrome.*chrome-agent-profile"
+sleep 2
+
+# Try launching again
+./start-agent-testing.sh [URL]
+```
+
+##  Success Criteria
+
+You know it's working when:
+-  Chrome opens with DevTools already visible
+-  BrowserToolsMCP panel shows "Connected" status
+-  `mcp_browser-tools_getConsoleLogs` returns logs
+-  `mcp_browser-tools_takeScreenshot` captures the page
+
+** Perfect for agent workflows where code changes need immediate, automated testing with full console access!**

@@ -1,0 +1,304 @@
+name: cloud-data-engineering
+description: AWS data engineering patterns for data lakes, ETL pipelines, cost optimization
+category: devops
+applies_to: [aws, data-lake, etl, glue, emr, athena, s3, step-functions]
+related_agents: [cloud-architect, terraform-specialist, deployment-engineer]
+related_templates: [infrastructure-diagrams, technical-architecture]
+
+# Cloud Data Engineering Context
+
+## AWS Data Lake Architecture
+
+**Core Services:**
+S3 (storage), AWS Glue (ETL/catalog/crawlers), EMR Serverless (Spark), Athena (SQL queries), Step Functions (orchestration), Lambda (event processing), SQS (queuing), EventBridge (routing)
+
+**Data Lake Zones:**
+```
+s3://project-data-lake/
+├── raw/          # Landing (original format)
+├── processed/    # Parquet + Snappy (year/month/day partitions)
+├── curated/      # Business-ready (analytics/reporting/ml-features)
+├── archive/      # Historical
+└── temp/         # 7-day TTL
+```
+
+**Format Strategy:**
+- Raw: Original (JSON, CSV)
+- Processed: Parquet + Snappy (5-10x compression)
+- Partitions: Hive-style (year/month/day)
+- File size: 128MB-1GB optimal
+
+**Glue Catalog:**
+- DB naming: `<project>_<zone>`
+- Table naming: `<source>_<entity>`
+- Schedule crawlers after ETL
+- Use Data Quality rules
+
+## EMR Serverless
+
+```hcl
+resource "aws_emrserverless_application" "spark" {
+  name          = "${var.project}-spark"
+  release_label = "emr-6.15.0"
+  type          = "SPARK"
+  
+  maximum_capacity {
+    cpu    = "${var.max_workers * var.worker_cpu} vCPU"
+    memory = "${var.max_workers * var.worker_memory} GB"
+  }
+  
+  auto_stop_configuration {
+    enabled               = true
+    idle_timeout_minutes = 15
+  }
+}
+```
+
+**Cost Optimization:**
+- Auto-stop (15min idle)
+- Auto-scaling with limits
+- Pre-warm only for predictable loads
+- Tag for cost tracking
+
+## Step Functions Pattern
+
+```json
+{
+  "StartAt": "ValidateFiles",
+  "States": {
+    "ValidateFiles": {"Type": "Task", "Next": "HasFiles"},
+    "HasFiles": {"Type": "Choice", "Choices": [{"Variable": "$.filesFound", "BooleanEquals": true, "Next": "StartEMR"}]},
+    "StartEMR": {"Type": "Task", "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync", "Next": "RunCrawler"},
+    "RunCrawler": {"Type": "Task", "Resource": "arn:aws:states:::aws-sdk:glue:startCrawler", "End": true}
+  }
+}
+```
+
+## S3 Optimization
+
+```hcl
+# Lifecycle: 90d → Intelligent-Tiering, 365d → Glacier, 7y expiry
+# Temp: 7d expiry
+# Versioning: Enable for critical buckets (prod)
+# Encryption: SSE-S3 or SSE-KMS
+```
+
+## Cost Optimization
+
+**Storage:**
+- Parquet + Snappy (5-10x reduction)
+- Intelligent-Tiering for infrequent access
+- Glacier archival (90% savings)
+- Delete temp data regularly
+
+**Compute:**
+- EMR auto-stop (idle_timeout)
+- Right-size Spark executors
+- Spot instances for batch
+- Off-peak scheduling
+
+**Query (Athena):**
+- Partition pruning
+- Columnar formats (Parquet/ORC)
+- CTAS for materialized views
+
+**Transfer:**
+- Same-region processing
+- VPC endpoints (avoid NAT costs)
+- Compression
+
+## Security
+
+**IAM Least Privilege:**
+```hcl
+# Read: s3:GetObject, s3:ListBucket
+# Write: s3:PutObject, s3:DeleteObject (specific paths)
+# Glue: GetDatabase, GetTable, UpdateTable, CreateTable
+```
+
+**Encryption:**
+- S3: Default encryption (SSE-S3/SSE-KMS)
+- Glue: Encrypt catalog/bookmarks
+- Athena: Encrypt query results
+- EMR: At-rest and in-transit
+
+**Network:**
+- Private subnets for EMR/Lambda
+- VPC endpoints for S3/Glue/Athena
+- Security groups (minimum ports)
+- VPC Flow Logs
+
+## Monitoring
+
+**CloudWatch Metrics:**
+- EMR: Job duration, vCPU/memory usage
+- Step Functions: Success rate, duration
+- Lambda: Invocations, errors, throttles
+- Glue: Job success, DPU hours
+
+**Alarms:**
+```hcl
+# EMR failures: JobsFailed > 0
+# Step Functions failures: ExecutionsFailed > 0
+# Lambda errors: Errors > threshold
+# Cost alerts: Budget > 80%
+```
+
+**Logging:**
+- S3 access logs
+- EMR logs → CloudWatch Logs
+- Step Functions execution history
+- CloudTrail API audits
+
+## ETL Best Practices
+
+**Spark Optimization:**
+```python
+# Efficient Parquet writing
+df.write.mode("overwrite") \
+  .partitionBy("year", "month", "day") \
+  .option("compression", "snappy") \
+  .option("maxRecordsPerFile", 100000) \
+  .parquet(f"s3://{bucket}/processed/")
+
+# Broadcast joins for small datasets
+result = large_df.join(broadcast(small_df), "key")
+
+# Reduce small files
+df.coalesce(10).write.parquet(...)
+```
+
+**Idempotency:**
+- Partition overwrite for reprocessing
+- Checkpoints/bookmarks
+- Deduplication logic
+
+**Error Handling:**
+- Separate bad records to error bucket
+- Retry with exponential backoff
+- Send failure notifications
+
+## Performance Tuning
+
+**Athena:**
+```sql
+-- Partition pruning
+WHERE year = '2025' AND month = '10'
+
+-- Column projection
+SELECT account_id, revenue FROM table
+
+-- CTAS for materialized views
+CREATE TABLE summary WITH (format='PARQUET') AS SELECT ...
+```
+
+**Spark:**
+```python
+spark_conf = {
+    "spark.executor.memory": "4g",
+    "spark.executor.cores": "2",
+    "spark.dynamicAllocation.enabled": "true",
+    "spark.dynamicAllocation.maxExecutors": "20",
+    "spark.sql.adaptive.enabled": "true"
+}
+```
+
+## CRITICAL LESSONS (Real-World Implementation - Oct 2025)
+
+### Spark Resources MUST Match EMR Capacity
+
+**Formula:**
+```
+Total Spark vCPU = Driver Cores + (Max Executors × Executor Cores)
+RULE: Total Spark vCPU ≤ EMR Maximum Capacity
+```
+
+**What Failed:**
+```hcl
+# EMR: 5 workers × 2 vCPU = 10 vCPU
+# Spark: 2 driver + (10 executors × 4 cores) = 42 vCPU ❌ EXCEEDS
+```
+
+**What Works:**
+```hcl
+# EMR: 5 workers × 2 vCPU = 10 vCPU
+# Spark: 2 driver + (3 executors × 2 cores) = 8 vCPU ✅ FITS
+# Use Terraform variables, NEVER hard-code in Step Functions
+```
+
+### Dynamic Allocation Conflict
+**Problem:** `initialExecutors (3) > maxExecutors (2)` → ERROR
+**Solution:** `spark_max_executors >= spark_executor_instances + 1`
+
+### EMR State Management
+**Cannot update EMR while STARTED/CREATING:**
+```bash
+aws emr-serverless stop-application --application-id $APP_ID
+# Wait for STOPPED
+terraform apply
+```
+
+### Cost Reality
+```
+Dev (without VPC): ~$15-30/month
+Dev (with VPC):    ~$80-100/month (NAT $64/month)
+Prod:              ~$350-450/month
+```
+Skip VPC in dev to save ~$70/month.
+
+### Timeline Expectations
+```
+EMR Job Lifecycle:
+SUBMITTED → PENDING (2-5 min) → RUNNING → SUCCESS
+Warning Signs:
+- SCHEDULED >10 min → Resource problem
+- PENDING >5 min → Worker startup issues
+```
+
+### Common Lambda Errors
+```python
+# WRONG: context.request_id
+# RIGHT: context.aws_request_id
+
+# Step Functions input format:
+{
+  'detail': {
+    'bucket': {'name': bucket_name},
+    'object': {'key': object_key}
+  }
+}
+```
+
+### Terraform Best Practices
+**Pass Variables:**
+```hcl
+module "stepfunctions" {
+  spark_driver_cores   = var.spark_driver_cores
+  spark_executor_cores = var.spark_executor_cores
+  spark_max_executors  = var.spark_max_executors
+}
+```
+
+**Environment-Specific .tfvars:**
+```hcl
+# dev.tfvars
+emr_max_workers = 5
+spark_max_executors = 3
+enable_vpc = false
+
+# prod.tfvars
+emr_max_workers = 100
+spark_max_executors = 20
+enable_vpc = true
+```
+
+## Quality Standards
+
+- S3 buckets: Encryption, versioning (critical), lifecycle policies
+- IAM: Least privilege
+- ETL: Error handling, logging, monitoring, idempotency
+- Costs: Tag tracking
+- IaC: Terraform-managed
+- **NEW:** Spark configs variable-based, never hard-coded
+- **NEW:** EMR allocations validated: total Spark < EMR capacity
+- **NEW:** Step Functions use env-specific variables from Terraform

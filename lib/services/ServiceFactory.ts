@@ -8,6 +8,7 @@ import { TemplateService } from './TemplateService';
 import { AgentService } from './AgentService';
 import { EnhancedContextService } from './EnhancedContextService';
 import { FileSystemAdapter } from '../infrastructure/storage/FileSystemAdapter';
+import { HybridFileSystemAdapter } from '../infrastructure/storage/HybridFileSystemAdapter';
 import { VercelBlobAdapter } from '../infrastructure/storage/VercelBlobAdapter';
 import { VercelKVCacheAdapter } from '../infrastructure/storage/VercelKVCacheAdapter';
 import { InMemoryCacheAdapter } from '../infrastructure/storage/InMemoryCacheAdapter';
@@ -32,13 +33,12 @@ export class ServiceFactory {
     const isProduction = process.env.NODE_ENV === 'production';
     const isVercelEnv = process.env.VERCEL === '1';
 
-    if (isProduction && isVercelEnv) {
-      // Use Vercel Blob in production
+    if (isProduction && isVercelEnv && process.env.USE_VERCEL_BLOB === 'true') {
+      // Use Vercel Blob in production (if explicitly enabled)
       this.storageAdapter = new VercelBlobAdapter('wama');
     } else {
-      // Use file system for local development
-      const wamaDir = path.join(os.homedir(), '.wama');
-      this.storageAdapter = new FileSystemAdapter(wamaDir);
+      // Use hybrid file system (tries ~/.wama, falls back to ./wama repo files)
+      this.storageAdapter = new HybridFileSystemAdapter();
     }
 
     return this.storageAdapter;
