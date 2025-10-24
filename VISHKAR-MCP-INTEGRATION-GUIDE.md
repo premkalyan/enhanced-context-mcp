@@ -10,14 +10,155 @@ This guide explains how Vishkar should integrate with the four MCP servers deplo
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Project Registry MCP](#project-registry-mcp)
-3. [Enhanced Context MCP](#enhanced-context-mcp)
-4. [JIRA MCP](#jira-mcp)
-5. [Confluence MCP](#confluence-mcp)
-6. [Integration Workflows](#integration-workflows)
-7. [Error Handling](#error-handling)
-8. [Best Practices](#best-practices)
+1. [MCP Discovery](#mcp-discovery)
+2. [Overview](#overview)
+3. [Project Registry MCP](#project-registry-mcp)
+4. [Enhanced Context MCP](#enhanced-context-mcp)
+5. [JIRA MCP](#jira-mcp)
+6. [Confluence MCP](#confluence-mcp)
+7. [Integration Workflows](#integration-workflows)
+8. [Error Handling](#error-handling)
+9. [Best Practices](#best-practices)
+
+---
+
+## MCP Discovery
+
+### How Vishkar Discovers Available MCPs
+
+Vishkar automatically discovers available MCPs by loading the registry on initialization. **No hardcoding required.**
+
+### Registry Endpoint
+
+**URL**: `https://enhanced-context-mcp.vercel.app/api/mcp-registry`
+
+**Alternative**: Static file at `https://enhanced-context-mcp.vercel.app/mcp-registry.json`
+
+### Loading the Registry
+
+```javascript
+// Vishkar initialization
+class Vishkar {
+  private mcpRegistry: any;
+
+  async initialize() {
+    // Load MCP registry
+    const response = await fetch("https://enhanced-context-mcp.vercel.app/api/mcp-registry");
+    const registry = await response.json();
+    this.mcpRegistry = registry.mcpServers;
+
+    console.log("Loaded MCPs:", Object.keys(this.mcpRegistry));
+    // Output: ["project-registry", "enhanced-context", "jira", "confluence"]
+  }
+}
+```
+
+### Registry Structure
+
+```json
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-24T00:00:00.000Z",
+  "mcpServers": {
+    "project-registry": {
+      "name": "Project Registry",
+      "url": "https://project-registry-henna.vercel.app",
+      "description": "Central registry for project metadata...",
+      "tools": [
+        {
+          "name": "get_project",
+          "description": "Get project by ID including JIRA key...",
+          "endpoint": "/api/projects/:id",
+          "method": "GET"
+        }
+      ]
+    },
+    "enhanced-context": { ... },
+    "jira": { ... },
+    "confluence": { ... }
+  }
+}
+```
+
+### How the LLM Decides Which MCP to Use
+
+**Vishkar (the LLM) automatically decides which MCP to call based on:**
+1. **Tool descriptions** in the registry
+2. **Context of the user's request**
+3. **Understanding of the workflow**
+
+**No explicit routing logic needed!** Just like in Cursor/Claude Code.
+
+### Example: Automatic MCP Selection
+
+**User Request**: "Create an epic for payment processing with security requirements"
+
+**Vishkar's Automatic Decision Process**:
+```
+1. Analyze request: User wants to CREATE an EPIC with SECURITY focus
+2. Look at available MCPs:
+   - project-registry: Has "get_project" tool → Need this for JIRA key
+   - enhanced-context: Has "load_enhanced_context" tool → Need this for epic format/security guidance
+   - jira: Has "create_issue" tool → Need this to create the epic
+   - confluence: Has page creation → Not needed yet
+
+3. Decide sequence (LLM reasoning):
+   Step 1: Call project-registry to get JIRA project key
+   Step 2: Call enhanced-context with domain_focus: ["security", "payments"]
+   Step 3: Call jira to create epic using guidance from step 2
+```
+
+**Code (Automatic Execution)**:
+```javascript
+// Vishkar automatically executes this sequence:
+
+// Step 1: Get project metadata
+const project = await this.call(
+  this.mcpRegistry["project-registry"],
+  "get_project",
+  { id: projectId }
+);
+
+// Step 2: Load enhanced context with security/payments focus
+const context = await this.call(
+  this.mcpRegistry["enhanced-context"],
+  "load_enhanced_context",
+  {
+    query_type: "story",
+    task_intent: "create",
+    scope: "epic",
+    complexity: "complex",
+    domain_focus: ["security", "payments"]
+  }
+);
+
+// Step 3: Create JIRA epic with proper format
+const epic = await this.call(
+  this.mcpRegistry["jira"],
+  "create_issue",
+  {
+    project_key: project.jiraProjectKey,
+    issue_type: "Epic",
+    summary: `${context.guidance.epicPrefixFormat}: Payment Processing`,
+    description: formatWithGuidance(context),
+    labels: ["payments", "security"]
+  }
+);
+```
+
+### Key Insight
+
+**You don't tell Vishkar which MCP to use.** Vishkar (the LLM) intelligently decides based on:
+- Tool descriptions
+- Your natural language request
+- Understanding of workflows
+
+Just make requests naturally:
+- "Create an epic for payments" → Vishkar calls enhanced-context → then jira
+- "Get project configuration" → Vishkar calls project-registry
+- "Document the architecture" → Vishkar calls enhanced-context → then confluence
+
+**This is the same pattern as Cursor/Claude Code's `mcp.json` configuration.**
 
 ---
 

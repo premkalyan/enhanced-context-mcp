@@ -1,0 +1,208 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-24T00:00:00.000Z",
+  "mcpServers": {
+    "project-registry": {
+      "name": "Project Registry",
+      "url": "https://project-registry-henna.vercel.app",
+      "description": "Central registry for project metadata, API keys, JIRA project keys, Confluence space keys, and GitHub repositories. Use this first to get project configuration.",
+      "transport": "http",
+      "authentication": {
+        "type": "bearer",
+        "header": "Authorization",
+        "note": "Use admin token for mutations, no auth for queries"
+      },
+      "tools": [
+        {
+          "name": "list_projects",
+          "description": "List all registered projects",
+          "endpoint": "/api/projects",
+          "method": "GET"
+        },
+        {
+          "name": "get_project",
+          "description": "Get project by ID including JIRA project key, Confluence space key, GitHub repo, and API key",
+          "endpoint": "/api/projects/:id",
+          "method": "GET"
+        },
+        {
+          "name": "create_project",
+          "description": "Create a new project with metadata (requires admin token)",
+          "endpoint": "/api/projects",
+          "method": "POST"
+        },
+        {
+          "name": "update_project",
+          "description": "Update existing project metadata (requires admin token)",
+          "endpoint": "/api/projects/:id",
+          "method": "PUT"
+        },
+        {
+          "name": "delete_project",
+          "description": "Delete project (requires admin token)",
+          "endpoint": "/api/projects/:id",
+          "method": "DELETE"
+        },
+        {
+          "name": "validate_token",
+          "description": "Validate API token",
+          "endpoint": "/api/validate-token",
+          "method": "POST"
+        }
+      ]
+    },
+    "enhanced-context": {
+      "name": "Enhanced Context MCP",
+      "url": "https://enhanced-context-mcp.vercel.app",
+      "description": "Intelligent context, template, and agent selection based on task intent, scope, and complexity. Provides SDLC guidance, quality checks, common mistakes to avoid, and best practices. USE THIS FIRST before creating any JIRA issues or documentation to get proper format, structure, and guidance.",
+      "transport": "http",
+      "authentication": {
+        "type": "api-key",
+        "header": "X-API-Key",
+        "note": "Use project API key from Project Registry"
+      },
+      "tools": [
+        {
+          "name": "load_enhanced_context",
+          "description": "Load intelligent contexts, templates, and agents based on task parameters. Returns: epic prefix format, story structure, acceptance criteria format, quality checks, common mistakes, best practices, SDLC step guidance, agent persona, and relevant templates. Parameters: query_type (story/architecture/testing/pr/infrastructure/documentation), task_intent (create/refine/breakdown/review/plan/implement), scope (epic/story/subtask), complexity (simple/medium/complex/critical), domain_focus (array: security/payments/compliance/performance/etc), output_format (jira/confluence/github), include_sdlc_checks (boolean)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "list_vishkar_agents",
+          "description": "List all available VISHKAR agent profiles (32 specialized agents including frontend, backend, cloud, security, testing, etc)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "load_vishkar_agent",
+          "description": "Load specific agent profile by ID with complete persona, expertise, and examples",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "update_agent",
+          "description": "Update existing agent with learning improvements (cannot create new agents)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "validate_vishkar_agent_profile",
+          "description": "Validate agent profile format and completeness",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "refresh_agent_cache",
+          "description": "Clear cached agent profiles and reload from disk",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        }
+      ]
+    },
+    "jira": {
+      "name": "JIRA MCP",
+      "url": "https://jira-mcp.vercel.app",
+      "description": "Create, update, and manage JIRA issues (epics, stories, tasks, subtasks, bugs). Search issues with JQL, add comments, link issues, and transition workflows. Always use Enhanced Context MCP first to get proper epic prefix format and story structure before creating issues.",
+      "transport": "http",
+      "authentication": {
+        "type": "api-key",
+        "header": "X-API-Key",
+        "note": "Use project API key from Project Registry"
+      },
+      "tools": [
+        {
+          "name": "create_issue",
+          "description": "Create JIRA issue (Epic, Story, Task, Subtask, Bug). For epics: use epic_name field. For stories: use epic_link to link to parent epic. For subtasks: use parent_key to link to parent story. Use proper format from Enhanced Context guidance (epic prefix, Given/When/Then acceptance criteria).",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "update_issue",
+          "description": "Update existing JIRA issue fields including summary, description, status, assignee, labels, priority, and custom fields",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_issue",
+          "description": "Get JIRA issue details by key with specified fields",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "search_issues",
+          "description": "Search JIRA issues using JQL (JIRA Query Language). Examples: 'project = MYPROJ AND type = Epic', 'Epic Link = MYPROJ-123', 'assignee = currentUser() AND status != Done'",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "add_comment",
+          "description": "Add comment to JIRA issue",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "link_issues",
+          "description": "Link two JIRA issues with relationship type (blocks, depends on, relates to, duplicates, causes)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "transition_issue",
+          "description": "Transition issue to different status (To Do, In Progress, In Review, Done, Blocked)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        }
+      ]
+    },
+    "confluence": {
+      "name": "Confluence MCP",
+      "url": "https://confluence-mcp.vercel.app",
+      "description": "Create, update, and manage Confluence documentation pages. Upload attachments, search pages with CQL, and add comments. Use Enhanced Context MCP first to get proper documentation templates and structure.",
+      "transport": "http",
+      "authentication": {
+        "type": "api-key",
+        "header": "X-API-Key",
+        "note": "Use project API key from Project Registry"
+      },
+      "tools": [
+        {
+          "name": "create_page",
+          "description": "Create Confluence page with title, content (HTML storage format), optional parent_id for hierarchical structure, and labels",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "update_page",
+          "description": "Update existing Confluence page content with version comment to track changes",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_page",
+          "description": "Get Confluence page details by ID with specified expand parameters (body.storage, version, metadata.labels)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "search_pages",
+          "description": "Search Confluence pages using CQL (Confluence Query Language). Examples: 'type = page AND space = MYSP AND label = architecture', 'title ~ Payment*', 'created >= now(-7d)'",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "upload_attachment",
+          "description": "Upload file attachment to Confluence page (base64-encoded content)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "add_page_comment",
+          "description": "Add comment to Confluence page",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        }
+      ]
+    }
+  }
+}
