@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ServiceFactory } from '@/lib/services/ServiceFactory';
-import ConfigLoader from '@/lib/config/configLoader';
+import { ServiceFactory } from '../../../lib/services/ServiceFactory';
+import ConfigLoader from '../../../lib/config/configLoader';
 
 // Tool definitions
 const TOOLS = [
