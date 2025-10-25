@@ -1,6 +1,6 @@
 {
-  "version": "1.3.0",
-  "lastUpdated": "2025-10-25T12:25:40.617Z",
+  "version": "1.3.1",
+  "lastUpdated": "2025-10-26T01:00:00.000Z",
   "mcpServers": {
     "project-registry": {
       "name": "Project Registry",
@@ -103,7 +103,7 @@
     "jira": {
       "name": "JIRA MCP",
       "url": "https://jira-mcp-pi.vercel.app",
-      "description": "Create, update, and manage JIRA issues (epics, stories, tasks, subtasks, bugs). Search issues with JQL, add comments, link issues, transition workflows, and manage dependencies. Supports 11 tools for complete JIRA issue management. Always use Enhanced Context MCP first to get proper epic prefix format and story structure before creating issues.",
+      "description": "Complete JIRA management with 24 tools: create/update issues (epics, stories, tasks, subtasks, bugs), search with JQL, manage workflows, link dependencies, track time with worklogs, manage boards/sprints, search users, and query projects. Always use Enhanced Context MCP first to get proper epic prefix format and story structure before creating issues.",
       "transport": "http",
       "authentication": {
         "type": "api-key",
@@ -174,6 +174,84 @@
         {
           "name": "get_link_types",
           "description": "Get available link types for the JIRA instance (blocks, relates to, etc.)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_boards",
+          "description": "Get all JIRA boards (Scrum, Kanban) with optional filters by type or name",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_board_details",
+          "description": "Get detailed information about a specific JIRA board by board ID",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_board_issues",
+          "description": "Get all issues on a specific board with optional JQL filter",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_current_user",
+          "description": "Get current authenticated user details (name, email, account ID)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "search_users",
+          "description": "Search JIRA users by query string (name, email) with configurable max results",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_user_details",
+          "description": "Get detailed user information by account ID",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_projects",
+          "description": "Get list of all JIRA projects accessible to the authenticated user",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_project_details",
+          "description": "Get detailed project information by project key including components, versions, roles",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "add_worklog",
+          "description": "Log time spent on an issue with optional comment and start date (ISO 8601 format)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_worklogs",
+          "description": "Get all time tracking worklogs for a specific issue",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_server_info",
+          "description": "Get JIRA server information (version, build number, server time)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "create_sprint",
+          "description": "Create a new sprint for a board with optional start date, end date, and sprint goal",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "update_sprint",
+          "description": "Update sprint properties (name, state, dates, goal) by sprint ID",
           "endpoint": "/api/mcp",
           "method": "POST"
         }
