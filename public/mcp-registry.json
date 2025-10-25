@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "lastUpdated": "2025-10-25T17:40:00.000Z",
+  "version": "1.3.0",
+  "lastUpdated": "2025-10-25T12:25:40.617Z",
   "mcpServers": {
     "project-registry": {
       "name": "Project Registry",
@@ -64,7 +64,7 @@
       "tools": [
         {
           "name": "load_enhanced_context",
-          "description": "Load intelligent contexts, templates, and agents based on task parameters. Returns: epic prefix format, story structure, acceptance criteria format, quality checks, common mistakes, best practices, SDLC step guidance, agent persona, and relevant templates. Parameters: query_type (story/architecture/testing/pr/infrastructure/documentation), task_intent (create/refine/breakdown/review/plan/implement), scope (epic/story/subtask), complexity (simple/medium/complex/critical), domain_focus (array: security/payments/compliance/performance/etc), output_format (jira/confluence/github), include_sdlc_checks (boolean)",
+          "description": "Load intelligent contexts, templates, and agents based on task parameters. Returns: epic prefix format, story structure, acceptance criteria format, quality checks, common mistakes, best practices, SDLC step guidance, agent persona, and relevant templates.",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
@@ -103,7 +103,7 @@
     "jira": {
       "name": "JIRA MCP",
       "url": "https://jira-mcp-pi.vercel.app",
-      "description": "Create, update, and manage JIRA issues (epics, stories, tasks, subtasks, bugs). Search issues with JQL, add comments, link issues, and transition workflows. Always use Enhanced Context MCP first to get proper epic prefix format and story structure before creating issues.",
+      "description": "Create, update, and manage JIRA issues (epics, stories, tasks, subtasks, bugs). Search issues with JQL, add comments, link issues, transition workflows, and manage dependencies. Supports 11 tools for complete JIRA issue management. Always use Enhanced Context MCP first to get proper epic prefix format and story structure before creating issues.",
       "transport": "http",
       "authentication": {
         "type": "api-key",
@@ -112,14 +112,8 @@
       },
       "tools": [
         {
-          "name": "create_issue",
-          "description": "Create JIRA issue (Epic, Story, Task, Subtask, Bug). For epics: use epic_name field. For stories: use epic_link to link to parent epic. For subtasks: use parent_key to link to parent story. Use proper format from Enhanced Context guidance (epic prefix, Given/When/Then acceptance criteria).",
-          "endpoint": "/api/mcp",
-          "method": "POST"
-        },
-        {
-          "name": "update_issue",
-          "description": "Update existing JIRA issue fields including summary, description, status, assignee, labels, priority, and custom fields",
+          "name": "search_issues",
+          "description": "Search JIRA issues using JQL (JIRA Query Language). Examples: \"project = MYPROJ AND type = Epic\", \"Epic Link = MYPROJ-123\", \"assignee = currentUser() AND status != Done\"",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
@@ -130,8 +124,14 @@
           "method": "POST"
         },
         {
-          "name": "search_issues",
-          "description": "Search JIRA issues using JQL (JIRA Query Language). Examples: 'project = MYPROJ AND type = Epic', 'Epic Link = MYPROJ-123', 'assignee = currentUser() AND status != Done'",
+          "name": "create_issue",
+          "description": "Create JIRA issue (Epic, Story, Task, Subtask, Bug). For epics: use epic_name field. For stories: use epic_link to link to parent epic. For subtasks: use parent_key to link to parent story.",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "update_issue",
+          "description": "Update existing JIRA issue fields including summary, description, status, assignee, labels, priority, and custom fields",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
@@ -142,14 +142,38 @@
           "method": "POST"
         },
         {
-          "name": "link_issues",
-          "description": "Link two JIRA issues with relationship type (blocks, depends on, relates to, duplicates, causes)",
+          "name": "transition_issue",
+          "description": "Transition issue to different status (To Do, In Progress, In Review, Done, Blocked)",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
         {
-          "name": "transition_issue",
-          "description": "Transition issue to different status (To Do, In Progress, In Review, Done, Blocked)",
+          "name": "get_issue_transitions",
+          "description": "Get available transitions for an issue (workflow states)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "link_issues",
+          "description": "Link two JIRA issues with relationship type (blocks, relates to, depends on, duplicates, causes)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_issue_links",
+          "description": "Get all links for a specific issue (inward and outward links)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_dependency_tree",
+          "description": "Get complete dependency tree for an issue (recursive dependency graph)",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_link_types",
+          "description": "Get available link types for the JIRA instance (blocks, relates to, etc.)",
           "endpoint": "/api/mcp",
           "method": "POST"
         }
@@ -158,7 +182,7 @@
     "confluence": {
       "name": "Confluence MCP",
       "url": "https://confluence-mcp-six.vercel.app",
-      "description": "Create, update, and manage Confluence documentation pages. Upload attachments, search pages with CQL, and add comments. Use Enhanced Context MCP first to get proper documentation templates and structure.",
+      "description": "Create, update, and manage Confluence documentation pages. Supports 10 tools for space management, content search, page operations, and attachments. Use Enhanced Context MCP first to get proper documentation templates and structure.",
       "transport": "http",
       "authentication": {
         "type": "api-key",
@@ -167,38 +191,62 @@
       },
       "tools": [
         {
+          "name": "get_spaces",
+          "description": "Get list of all Confluence spaces",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_space",
+          "description": "Get details of a specific Confluence space by key",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_content_by_id",
+          "description": "Get Confluence page content by page ID",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_content_by_space_and_title",
+          "description": "Get Confluence page by space key and title",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "search",
+          "description": "Search Confluence content using CQL (Confluence Query Language). Examples: \"type = page AND space = MYSP AND label = architecture\", \"title ~ Payment*\", \"created >= now(-7d)\"",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
           "name": "create_page",
-          "description": "Create Confluence page with title, content (HTML storage format), optional parent_id for hierarchical structure, and labels",
+          "description": "Create a new Confluence page with title, content (HTML storage format), optional parent_id for hierarchical structure, and labels",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
         {
           "name": "update_page",
-          "description": "Update existing Confluence page content with version comment to track changes",
+          "description": "Update an existing Confluence page content with version comment to track changes",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
         {
-          "name": "get_page",
-          "description": "Get Confluence page details by ID with specified expand parameters (body.storage, version, metadata.labels)",
+          "name": "get_page_children",
+          "description": "Get child pages of a Confluence page (page hierarchy)",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
         {
-          "name": "search_pages",
-          "description": "Search Confluence pages using CQL (Confluence Query Language). Examples: 'type = page AND space = MYSP AND label = architecture', 'title ~ Payment*', 'created >= now(-7d)'",
+          "name": "get_page_attachments",
+          "description": "Get attachments for a Confluence page",
           "endpoint": "/api/mcp",
           "method": "POST"
         },
         {
-          "name": "upload_attachment",
-          "description": "Upload file attachment to Confluence page (base64-encoded content)",
-          "endpoint": "/api/mcp",
-          "method": "POST"
-        },
-        {
-          "name": "add_page_comment",
-          "description": "Add comment to Confluence page",
+          "name": "add_page_labels",
+          "description": "Add labels to a Confluence page for categorization and search",
           "endpoint": "/api/mcp",
           "method": "POST"
         }
