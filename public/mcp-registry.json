@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "lastUpdated": "2025-10-24T00:00:00.000Z",
+  "version": "1.2.0",
+  "lastUpdated": "2025-10-25T17:40:00.000Z",
   "mcpServers": {
     "project-registry": {
       "name": "Project Registry",
@@ -102,7 +102,7 @@
     },
     "jira": {
       "name": "JIRA MCP",
-      "url": "https://jira-mcp.vercel.app",
+      "url": "https://jira-mcp-pi.vercel.app",
       "description": "Create, update, and manage JIRA issues (epics, stories, tasks, subtasks, bugs). Search issues with JQL, add comments, link issues, and transition workflows. Always use Enhanced Context MCP first to get proper epic prefix format and story structure before creating issues.",
       "transport": "http",
       "authentication": {
@@ -157,7 +157,7 @@
     },
     "confluence": {
       "name": "Confluence MCP",
-      "url": "https://confluence-mcp.vercel.app",
+      "url": "https://confluence-mcp-six.vercel.app",
       "description": "Create, update, and manage Confluence documentation pages. Upload attachments, search pages with CQL, and add comments. Use Enhanced Context MCP first to get proper documentation templates and structure.",
       "transport": "http",
       "authentication": {
@@ -199,6 +199,30 @@
         {
           "name": "add_page_comment",
           "description": "Add comment to Confluence page",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        }
+      ]
+    },
+    "storycrafter": {
+      "name": "StoryCrafter MCP",
+      "url": "https://storycrafter-mcp.vercel.app",
+      "description": "AI-powered backlog generator for VISHKAR 3-agent consensus discussions. Generates 6-8 comprehensive epics with 20-40 detailed user stories, complete with acceptance criteria, technical tasks, story points, and time estimates. Use this AFTER Enhanced Context MCP when you have consensus messages and need to create a complete project backlog.",
+      "transport": "http",
+      "authentication": {
+        "type": "none",
+        "note": "No authentication required (service handles its own API keys)"
+      },
+      "tools": [
+        {
+          "name": "generate_backlog",
+          "description": "Generate complete project backlog from VISHKAR 3-agent consensus discussion (system, alex, blake, casey messages). Returns structured backlog with 6-8 epics, 20-40 stories, acceptance criteria in Given/When/Then format, technical implementation tasks, story points (Fibonacci scale), estimated hours, dependencies, tags, and MVP prioritization. Takes 30-60 seconds to generate.",
+          "endpoint": "/api/mcp",
+          "method": "POST"
+        },
+        {
+          "name": "get_backlog_summary",
+          "description": "Extract summary statistics from a generated backlog: total epics, total stories, total hours, and breakdown by epic",
           "endpoint": "/api/mcp",
           "method": "POST"
         }
