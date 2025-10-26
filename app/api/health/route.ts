@@ -10,7 +10,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'healthy',
     version: '2.0.0',
-    commit: '383c863',
+    commit: '1e5fa6b',
     uptime: Math.floor(uptime),
     timestamp: new Date().toISOString(),
     checks: {
