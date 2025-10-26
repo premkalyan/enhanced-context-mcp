@@ -54,6 +54,11 @@
       "contexts": ["c-core-sdlc", "c-infrastructure-as-code", "c-cloud-data-engineering"],
       "templates": ["infrastructure-diagrams"],
       "description": "Infrastructure as code and cloud architecture"
+    },
+    "architecture-diagrams": {
+      "contexts": ["c-core-sdlc", "c-architecture-generation"],
+      "templates": ["architecture-diagrams-mermaid"],
+      "description": "System architecture diagrams using Mermaid (MCP, microservices, data pipelines)"
     }
   },
   "allowedQueryTypes": [
@@ -67,6 +72,7 @@
     "story-breakdown",
     "documentation",
     "flow-diagrams",
-    "infrastructure"
+    "infrastructure",
+    "architecture-diagrams"
   ]
 }

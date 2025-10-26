@@ -23,39 +23,52 @@ export class AgentService {
   ) {}
 
   /**
-   * Load all VISHKAR agents
+   * Load all VISHKAR agents from both technical and domain directories
    */
   async listVishkarAgents(agentType?: 'domain_expert' | 'technical' | 'all'): Promise<AgentMetadata[]> {
     const config = ConfigLoader.getInstance().loadServerConfig();
-    const agentDir = config.storage.agentSubdirectory;
+
+    // Scan both technical agents (agents/) and domain agents (domain-agents/)
+    const directories = [
+      config.storage.agentSubdirectory,      // 'agents' - technical agents
+      'domain-agents'                         // domain planning agents
+    ];
 
     try {
-      const agentFiles = await this.storageAdapter.list(agentDir);
       const agents: AgentMetadata[] = [];
 
-      for (const agentFile of agentFiles) {
-        if (!agentFile.endsWith('.md')) continue;
-
+      for (const directory of directories) {
         try {
-          const agentId = agentFile.split('/').pop()?.replace('.md', '') || agentFile;
-          const content = await this.storageAdapter.read(agentFile);
-          const partialMetadata = this.parseAgentMetadata(agentId, content);
+          const agentFiles = await this.storageAdapter.list(directory);
 
-          // Ensure we have required fields
-          const metadata: AgentMetadata = {
-            id: partialMetadata.id || agentId,
-            name: partialMetadata.name || agentId,
-            description: partialMetadata.description || '',
-            type: partialMetadata.type || 'technical',
-            specializations: partialMetadata.specializations,
-            model: partialMetadata.model
-          };
+          for (const agentFile of agentFiles) {
+            if (!agentFile.endsWith('.md')) continue;
 
-          if (!agentType || agentType === 'all' || metadata.type === agentType) {
-            agents.push(metadata);
+            try {
+              const agentId = agentFile.split('/').pop()?.replace('.md', '') || agentFile;
+              const content = await this.storageAdapter.read(agentFile);
+              const partialMetadata = this.parseAgentMetadata(agentId, content);
+
+              // Ensure we have required fields
+              const metadata: AgentMetadata = {
+                id: partialMetadata.id || agentId,
+                name: partialMetadata.name || agentId,
+                description: partialMetadata.description || '',
+                type: partialMetadata.type || 'technical',
+                specializations: partialMetadata.specializations,
+                model: partialMetadata.model
+              };
+
+              if (!agentType || agentType === 'all' || metadata.type === agentType) {
+                agents.push(metadata);
+              }
+            } catch (error) {
+              console.error(`Failed to parse agent ${agentFile}:`, error);
+            }
           }
         } catch (error) {
-          console.error(`Failed to parse agent ${agentFile}:`, error);
+          // If directory doesn't exist, continue with next directory
+          console.log(`Directory ${directory} not found or inaccessible, skipping...`);
         }
       }
 
@@ -67,7 +80,7 @@ export class AgentService {
   }
 
   /**
-   * Load a specific VISHKAR agent by ID
+   * Load a specific VISHKAR agent by ID from both technical and domain directories
    */
   async loadVishkarAgent(agentId: string): Promise<Agent | null> {
     // Check cache first
@@ -85,25 +98,33 @@ export class AgentService {
     }
 
     const config = ConfigLoader.getInstance().loadServerConfig();
-    const agentDir = config.storage.agentSubdirectory;
-    const agentPath = `${agentDir}/${agentId}.md`;
 
-    try {
-      if (await this.storageAdapter.exists(agentPath)) {
-        const content = await this.storageAdapter.read(agentPath);
-        const metadata = this.parseAgentMetadata(agentId, content);
-        const agent = Agent.fromFile(agentId, content, metadata);
+    // Try both directories: technical agents (agents/) and domain agents (domain-agents/)
+    const directories = [
+      config.storage.agentSubdirectory,      // 'agents' - technical agents
+      'domain-agents'                         // domain planning agents
+    ];
 
-        // Cache the agent
-        this.agentCache.set(agentId, agent);
-        if (this.cacheAdapter) {
-          await this.cacheAdapter.set(`agent:${agentId}`, agent, 3600); // 1 hour TTL
+    for (const directory of directories) {
+      const agentPath = `${directory}/${agentId}.md`;
+
+      try {
+        if (await this.storageAdapter.exists(agentPath)) {
+          const content = await this.storageAdapter.read(agentPath);
+          const metadata = this.parseAgentMetadata(agentId, content);
+          const agent = Agent.fromFile(agentId, content, metadata);
+
+          // Cache the agent
+          this.agentCache.set(agentId, agent);
+          if (this.cacheAdapter) {
+            await this.cacheAdapter.set(`agent:${agentId}`, agent, 3600); // 1 hour TTL
+          }
+
+          return agent;
         }
-
-        return agent;
+      } catch (error) {
+        console.error(`Failed to load agent ${agentId} from ${directory}:`, error);
       }
-    } catch (error) {
-      console.error(`Failed to load agent ${agentId}:`, error);
     }
 
     return null;

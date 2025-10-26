@@ -7,6 +7,7 @@ import { ContextService } from './ContextService';
 import { TemplateService } from './TemplateService';
 import { AgentService } from './AgentService';
 import { ContextCombinationService } from './ContextCombinationService';
+import { IntentAnalyzer } from './IntentAnalyzer';
 import ConfigLoader from '../config/configLoader';
 import {
   EnhancedQueryParameters,
@@ -40,6 +41,7 @@ export interface ServiceStatus {
 
 export class EnhancedContextService {
   private readonly combinationService: ContextCombinationService;
+  private readonly intentAnalyzer: IntentAnalyzer;
 
   constructor(
     private readonly contextService: ContextService,
@@ -47,17 +49,46 @@ export class EnhancedContextService {
     private readonly agentService: AgentService
   ) {
     this.combinationService = new ContextCombinationService();
+    this.intentAnalyzer = new IntentAnalyzer();
   }
 
   /**
-   * Load enhanced context based on query parameters
-   * Now supports rich query parameters for intelligent context selection
+   * Load enhanced context based on query parameters OR natural language task statement
+   * Supports two modes:
+   * 1. Structured: Provide query_type, task_intent, scope, complexity, domain_focus
+   * 2. Natural Language: Provide task_statement and let AI infer the structure
    */
   async loadEnhancedContext(args: EnhancedQueryParameters): Promise<EnhancedContextResult> {
-    const { query_type, project_path } = args;
+    let { query_type, project_path } = args;
+    let intentAnalysis: ReturnType<IntentAnalyzer['analyze']> | undefined;
+    let analyzedArgs = args;
 
     try {
+      // NEW: If task_statement provided but no query_type, analyze intent
+      if ((args as any).task_statement && !query_type) {
+        const statement = (args as any).task_statement as string;
+        intentAnalysis = this.intentAnalyzer.analyze(statement);
+
+        // Merge analyzed intent with provided args (explicit args take precedence)
+        analyzedArgs = {
+          ...args,
+          query_type: intentAnalysis.query_type,
+          task_intent: args.task_intent || intentAnalysis.task_intent,
+          scope: args.scope || intentAnalysis.scope,
+          complexity: args.complexity || intentAnalysis.complexity,
+          output_format: args.output_format || intentAnalysis.output_format,
+          domain_focus: args.domain_focus || intentAnalysis.domain_focus,
+          user_query: statement, // Store original statement
+        };
+
+        query_type = intentAnalysis.query_type;
+      }
+
       // Validate query type
+      if (!query_type) {
+        throw new Error('Either query_type or task_statement must be provided');
+      }
+
       if (!ConfigLoader.getInstance().isValidQueryType(query_type)) {
         const allowedTypes = ConfigLoader.getInstance().getAllowedQueryTypes();
         throw new Error(
@@ -65,9 +96,9 @@ export class EnhancedContextService {
         );
       }
 
-      // Find best matching context combination
-      const combination = this.combinationService.findBestCombination(args);
-      const contextList = this.combinationService.getAllContexts(combination, args);
+      // Find best matching context combination using analyzed args
+      const combination = this.combinationService.findBestCombination(analyzedArgs);
+      const contextList = this.combinationService.getAllContexts(combination, analyzedArgs);
       const reasoningArray = this.combinationService.explainCombination(combination, args);
       const reasoning = reasoningArray.join('\n');
 
@@ -113,7 +144,7 @@ export class EnhancedContextService {
 
       const responseText = this.buildResponseText({
         query_type,
-        args,
+        args: analyzedArgs,
         combination,
         reasoning,
         agentSelection,
@@ -124,7 +155,8 @@ export class EnhancedContextService {
         projectContent,
         templateContent,
         sdlcChecklist,
-        currentStep
+        currentStep,
+        intentAnalysis // Add intent analysis results
       });
 
       return {
@@ -241,6 +273,7 @@ export class EnhancedContextService {
     templateContent: string;
     sdlcChecklist?: SDLCStep[];
     currentStep?: SDLCStep;
+    intentAnalysis?: ReturnType<IntentAnalyzer['analyze']>;
   }): string {
     const {
       query_type,
@@ -255,10 +288,32 @@ export class EnhancedContextService {
       projectContent,
       templateContent,
       sdlcChecklist,
-      currentStep
+      currentStep,
+      intentAnalysis
     } = data;
 
     let response = `# Enhanced Context Loaded Successfully\n\n`;
+
+    // NEW: Add intent analysis section if available
+    if (intentAnalysis) {
+      response += `## 🧠 Intent Analysis\n\n`;
+      response += `**Original Statement**: "${args.user_query}"\n\n`;
+      response += `**Analyzed Intent**:\n`;
+      response += `- **Query Type**: ${intentAnalysis.query_type}\n`;
+      response += `- **Task Intent**: ${intentAnalysis.task_intent}\n`;
+      if (intentAnalysis.scope) response += `- **Scope**: ${intentAnalysis.scope}\n`;
+      if (intentAnalysis.complexity) response += `- **Complexity**: ${intentAnalysis.complexity}\n`;
+      if (intentAnalysis.output_format) response += `- **Output Format**: ${intentAnalysis.output_format}\n`;
+      if (intentAnalysis.domain_focus && intentAnalysis.domain_focus.length > 0) {
+        response += `- **Domain Focus**: ${intentAnalysis.domain_focus.join(', ')}\n`;
+      }
+      response += `\n**Confidence**: ${(intentAnalysis.confidence * 100).toFixed(1)}%\n\n`;
+      response += `**Analysis Reasoning**:\n`;
+      intentAnalysis.reasoning.forEach(reason => {
+        response += `- ${reason}\n`;
+      });
+      response += `\n`;
+    }
 
     // Add task understanding section
     response += `## 🎯 Task Understanding\n\n`;

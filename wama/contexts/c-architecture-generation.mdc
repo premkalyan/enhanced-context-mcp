@@ -45,6 +45,14 @@ The architecture generation system produces 7 comprehensive artifacts:
 - External service integrations
 - Authentication/authorization boundaries
 - Network topology
+- **Enhanced Mermaid Requirements:**
+  - Use `graph TB` (top-bottom) for layered architecture
+  - Organize components with labeled subgraphs: `subgraph "Layer Name"`
+  - Multi-line labels with context: `Component[Name<br/>Description]`
+  - Apply consistent color coding by layer (see t-architecture-diagrams-mermaid.md)
+  - Use solid arrows `-->` for primary flow, dotted `-.->` for optional/async
+  - Label arrows with actions: `Service -->|Action| Database`
+  - Include numbered steps for sequential flows: `|1. Load Context|`
 
 ### 3. Component Diagram (Mermaid)
 - Detailed module breakdown
@@ -171,6 +179,138 @@ The architecture generation system produces 7 comprehensive artifacts:
 - Production-ready design
 - Comprehensive documentation
 - Suitable for stakeholder presentation and development teams
+
+## Mermaid Diagram Best Practices
+
+### Layered Architecture Pattern (Recommended)
+
+**Structure:**
+```
+graph TB
+    subgraph "Layer 1: Client"
+        Components with descriptions
+    end
+
+    subgraph "Layer 2: Services"
+        Components with descriptions
+    end
+
+    subgraph "Layer 3: Data"
+        Components with descriptions
+    end
+```
+
+**Key Principles:**
+1. **Multi-line Labels:** Always use `<br/>` for component descriptions
+   - Example: `JIRA[JIRA MCP<br/>24 Tools]` not `JIRA[JIRA MCP]`
+
+2. **Subgraph Organization:** Group related components with descriptive labels
+   - Use quotes: `subgraph "AI Agent Layer"`
+   - Label clearly describes purpose
+
+3. **Arrow Types:** Choose based on relationship
+   - Solid `-->` for primary synchronous flow
+   - Dotted `-.->` for optional/asynchronous flow
+   - Thick `==>` for critical/high-volume paths
+
+4. **Arrow Labels:** Describe the action or data flow
+   - Example: `Agent -->|1. Load Context| Registry`
+   - Number steps for sequential processes
+
+5. **Color Coding:** Apply consistently across all diagrams
+   - Client layer: `#e1f5ff` (light blue)
+   - Gateway/API: `#fff4e6` (light orange)
+   - Services: `#e8f5e9` (light green)
+   - Data layer: `#fce4ec` (light pink)
+   - External: `#f3e5f5` (light purple)
+   - Infrastructure: `#fff9c4` (light yellow)
+   - Cloud services: `#c8e6c9` (darker green)
+
+### Layout Direction Guidelines
+
+- **Top-Bottom (`graph TB`):** Use for layered architectures
+  - Client → Gateway → Services → Data → External
+  - Clear vertical hierarchy
+
+- **Left-Right (`graph LR`):** Use for pipeline/flow diagrams
+  - Data ingestion → Processing → Storage → Analytics
+  - Time-based progression
+
+### Node Shape Reference
+
+- `[]` Rectangle: Default for services/components
+- `()` Rounded: Processes or operations
+- `([])` Stadium: Start/end points
+- `{}` Diamond: Decision points
+- `[()]` Database shape: Data storage
+
+### Example: High-Quality MCP Architecture
+
+```mermaid
+graph TB
+    subgraph "AI Agent Layer"
+        Agent[AI Agent/LLM<br/>Claude, GPT, Gemini]
+    end
+
+    subgraph "MCP Server Layer"
+        Registry[Enhanced Context MCP<br/>Registry & Guidance]
+        JIRA[JIRA MCP<br/>24 Tools]
+        Confluence[Confluence MCP<br/>32 Tools]
+    end
+
+    subgraph "External Services"
+        JIRACloud[JIRA Cloud<br/>Issues, Boards, Sprints]
+        ConfluenceCloud[Confluence Cloud<br/>Pages, Attachments]
+    end
+
+    Agent -->|1. Load Context| Registry
+    Agent -->|2. Create Issues| JIRA
+    Agent -->|3. Create Docs| Confluence
+
+    JIRA -->|REST API v3| JIRACloud
+    Confluence -->|REST API| ConfluenceCloud
+
+    Registry -.->|Provides Templates| Agent
+
+    style Agent fill:#e1f5ff
+    style Registry fill:#fff4e6
+    style JIRA fill:#e8f5e9
+    style Confluence fill:#e8f5e9
+    style JIRACloud fill:#c8e6c9
+    style ConfluenceCloud fill:#c8e6c9
+```
+
+### Quality Checklist for Mermaid Diagrams
+
+Before generating final diagrams, verify:
+- [ ] All nodes have multi-line labels with `<br/>` descriptions
+- [ ] Components grouped in labeled subgraphs
+- [ ] Arrow types match relationship semantics
+- [ ] All arrows labeled with actions/data
+- [ ] Consistent color coding applied
+- [ ] Layout direction appropriate (TB for layers, LR for flows)
+- [ ] No orphaned nodes
+- [ ] Technology stack names included
+- [ ] External dependencies clearly marked
+- [ ] Critical paths highlighted
+
+### Common Mistakes to Avoid
+
+❌ **Don't:**
+- Use single-line labels without context
+- Skip subgraph organization
+- Mix different color schemes
+- Leave arrows unlabeled
+- Use default styling (always add colors)
+- Create flat diagrams without layers
+
+✅ **Do:**
+- Add descriptions to all components
+- Group logically with subgraphs
+- Use consistent color palette
+- Label all relationships
+- Apply styling to every node
+- Show clear architectural layers
 
 ## Integration Instructions
 

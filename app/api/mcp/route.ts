@@ -11,14 +11,18 @@ import ConfigLoader from '../../../lib/config/configLoader';
 const TOOLS = [
   {
     name: 'load_enhanced_context',
-    description: 'Load global WAMA contexts, templates, and project-specific rules for enhanced MCP processing. Now supports rich query parameters for intelligent context selection based on task intent, scope, complexity, and domain focus. Includes 13-step SDLC guidance and task-specific quality checks.',
+    description: 'Load global WAMA contexts, templates, and project-specific rules for enhanced MCP processing. Supports TWO modes: (1) Natural Language: Just provide task_statement describing what you want to do, and the AI will intelligently infer contexts, templates, and guidance. (2) Structured: Provide explicit query_type, task_intent, scope, etc. Includes 13-step SDLC guidance and task-specific quality checks.',
     inputSchema: {
       type: 'object',
       properties: {
+        task_statement: {
+          type: 'string',
+          description: 'Natural language description of what you\'re trying to do (e.g., "I want to create an architecture diagram for our MCP server system", "Help me write user stories for a payment feature", "Review security for our authentication system"). The AI will analyze this and provide relevant contexts, templates, and guidance. Use this for the most intelligent and accurate context loading.'
+        },
         query_type: {
           type: 'string',
           enum: ConfigLoader.getInstance().getAllowedQueryTypes(),
-          description: 'Type of user query to load appropriate contexts and templates'
+          description: 'Type of user query to load appropriate contexts and templates. Optional if task_statement is provided.'
         },
         task_intent: {
           type: 'string',
@@ -61,7 +65,7 @@ const TOOLS = [
           description: 'Path to current project (optional, auto-detected if not provided)'
         }
       },
-      required: ['query_type']
+      required: [] // Either task_statement or query_type must be provided, validated at runtime
     }
   },
   {

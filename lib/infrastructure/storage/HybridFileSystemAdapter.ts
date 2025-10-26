@@ -111,5 +111,6 @@ export class HybridFileSystemAdapter implements IStorageAdapter {
     await fs.mkdir(path.join(this.primaryDir, 'contexts'), { recursive: true });
     await fs.mkdir(path.join(this.primaryDir, 'templates'), { recursive: true });
     await fs.mkdir(path.join(this.primaryDir, 'agents'), { recursive: true });
+    await fs.mkdir(path.join(this.primaryDir, 'domain-agents'), { recursive: true });
   }
 }
