@@ -69,19 +69,26 @@ export class HybridFileSystemAdapter implements IStorageAdapter {
     // Try primary first
     try {
       const entries = await fs.readdir(primaryPath, { withFileTypes: true });
+      const files = entries
+        .filter(entry => entry.isFile())
+        .map(entry => path.join(prefix, entry.name));
+
+      // If primary exists but is empty, try fallback
+      if (files.length > 0) {
+        return files;
+      }
+    } catch {
+      // Primary doesn't exist or can't be read, will try fallback
+    }
+
+    // Try fallback
+    try {
+      const entries = await fs.readdir(fallbackPath, { withFileTypes: true });
       return entries
         .filter(entry => entry.isFile())
         .map(entry => path.join(prefix, entry.name));
     } catch {
-      // Fall back to repo files
-      try {
-        const entries = await fs.readdir(fallbackPath, { withFileTypes: true });
-        return entries
-          .filter(entry => entry.isFile())
-          .map(entry => path.join(prefix, entry.name));
-      } catch {
-        return [];
-      }
+      return [];
     }
   }
 
