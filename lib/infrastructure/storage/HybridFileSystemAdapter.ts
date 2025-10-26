@@ -75,19 +75,25 @@ export class HybridFileSystemAdapter implements IStorageAdapter {
 
       // If primary exists but is empty, try fallback
       if (files.length > 0) {
+        console.log(`[HybridFS] Primary ${prefix}: found ${files.length} files`);
         return files;
       }
-    } catch {
+      console.log(`[HybridFS] Primary ${prefix}: empty, trying fallback`);
+    } catch (err) {
+      console.log(`[HybridFS] Primary ${prefix}: error, trying fallback`, err);
       // Primary doesn't exist or can't be read, will try fallback
     }
 
     // Try fallback
     try {
       const entries = await fs.readdir(fallbackPath, { withFileTypes: true });
-      return entries
+      const files = entries
         .filter(entry => entry.isFile())
         .map(entry => path.join(prefix, entry.name));
-    } catch {
+      console.log(`[HybridFS] Fallback ${prefix}: found ${files.length} files`);
+      return files;
+    } catch (err) {
+      console.log(`[HybridFS] Fallback ${prefix}: error`, err);
       return [];
     }
   }
