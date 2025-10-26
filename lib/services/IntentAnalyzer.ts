@@ -367,12 +367,12 @@ export class IntentAnalyzer {
     return bestMatch;
   }
 
-  private detectTaskIntent(statement: string): { intent: string; confidence: number } | null {
+  private detectTaskIntent(statement: string): { intent: 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement'; confidence: number } | null {
     for (const [intent, patterns] of Object.entries(this.intentPatterns)) {
       for (const pattern of patterns) {
         if (pattern.test(statement)) {
           return {
-            intent: intent as any,
+            intent: intent as 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement',
             confidence: 0.8,
           };
         }
@@ -381,12 +381,12 @@ export class IntentAnalyzer {
     return null;
   }
 
-  private detectScope(statement: string): { scope: string; confidence: number } | null {
+  private detectScope(statement: string): { scope: 'epic' | 'story' | 'subtask' | 'portfolio' | 'theme' | 'spike'; confidence: number } | null {
     for (const [scope, patterns] of Object.entries(this.scopePatterns)) {
       for (const pattern of patterns) {
         if (pattern.test(statement)) {
           return {
-            scope: scope as any,
+            scope: scope as 'epic' | 'story' | 'subtask' | 'portfolio' | 'theme' | 'spike',
             confidence: 0.7,
           };
         }
@@ -395,7 +395,7 @@ export class IntentAnalyzer {
     return null;
   }
 
-  private detectComplexity(statement: string): { level: string; confidence: number } | null {
+  private detectComplexity(statement: string): { level: 'simple' | 'medium' | 'complex' | 'critical'; confidence: number } | null {
     // Check critical first (highest priority)
     for (const pattern of this.complexityIndicators.critical) {
       if (pattern.test(statement)) {
@@ -428,11 +428,11 @@ export class IntentAnalyzer {
     return null;
   }
 
-  private detectOutputFormat(statement: string): { format: string } | null {
+  private detectOutputFormat(statement: string): { format: 'jira' | 'confluence' | 'github' | 'gitlab' } | null {
     for (const [format, patterns] of Object.entries(this.outputFormatPatterns)) {
       for (const pattern of patterns) {
         if (pattern.test(statement)) {
-          return { format: format as any };
+          return { format: format as 'jira' | 'confluence' | 'github' | 'gitlab' };
         }
       }
     }
