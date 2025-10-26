@@ -63,37 +63,53 @@ export class HybridFileSystemAdapter implements IStorageAdapter {
   }
 
   async list(prefix: string): Promise<string[]> {
-    const primaryPath = path.join(this.primaryDir, prefix);
     const fallbackPath = path.join(this.fallbackDir, prefix);
+    const primaryPath = path.join(this.primaryDir, prefix);
 
-    // Try primary first
+    // On Vercel/production, try fallback first (repo files)
+    const isVercel = process.env.VERCEL === '1';
+
+    if (isVercel) {
+      // Production: Use repo files from fallback
+      try {
+        const entries = await fs.readdir(fallbackPath, { withFileTypes: true });
+        const files = entries
+          .filter(entry => entry.isFile())
+          .map(entry => path.join(prefix, entry.name));
+        console.log(`[HybridFS] Vercel fallback ${prefix}: found ${files.length} files`);
+        return files;
+      } catch (err) {
+        console.log(`[HybridFS] Vercel fallback ${prefix}: error`, err);
+        return [];
+      }
+    }
+
+    // Local dev: Try primary first, then fallback
     try {
       const entries = await fs.readdir(primaryPath, { withFileTypes: true });
       const files = entries
         .filter(entry => entry.isFile())
         .map(entry => path.join(prefix, entry.name));
 
-      // If primary exists but is empty, try fallback
       if (files.length > 0) {
         console.log(`[HybridFS] Primary ${prefix}: found ${files.length} files`);
         return files;
       }
       console.log(`[HybridFS] Primary ${prefix}: empty, trying fallback`);
     } catch (err) {
-      console.log(`[HybridFS] Primary ${prefix}: error, trying fallback`, err);
-      // Primary doesn't exist or can't be read, will try fallback
+      console.log(`[HybridFS] Primary ${prefix}: error, trying fallback`);
     }
 
-    // Try fallback
+    // Fallback for local dev
     try {
       const entries = await fs.readdir(fallbackPath, { withFileTypes: true });
       const files = entries
         .filter(entry => entry.isFile())
         .map(entry => path.join(prefix, entry.name));
-      console.log(`[HybridFS] Fallback ${prefix}: found ${files.length} files`);
+      console.log(`[HybridFS] Local fallback ${prefix}: found ${files.length} files`);
       return files;
     } catch (err) {
-      console.log(`[HybridFS] Fallback ${prefix}: error`, err);
+      console.log(`[HybridFS] Local fallback ${prefix}: error`, err);
       return [];
     }
   }
