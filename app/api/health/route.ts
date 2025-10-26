@@ -10,11 +10,16 @@ export async function GET() {
   return NextResponse.json({
     status: 'healthy',
     version: '2.0.0',
+    commit: '383c863',
     uptime: Math.floor(uptime),
     timestamp: new Date().toISOString(),
     checks: {
       storage: true,
       memory: true
+    },
+    env: {
+      isVercel: process.env.VERCEL === '1',
+      nodeEnv: process.env.NODE_ENV
     }
   });
 }
