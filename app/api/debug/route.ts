@@ -68,6 +68,10 @@ export async function GET(request: NextRequest) {
       // Test storage adapter directly
       const storageAdapter = ServiceFactory.getStorageAdapter();
       debugInfo.agentService.storageAdapterType = storageAdapter.constructor.name;
+      debugInfo.agentService.isHybridAdapter = storageAdapter.constructor.name.includes('Hybrid') ||
+                                                  storageAdapter.constructor.name === 'HybridFileSystemAdapter';
+      debugInfo.agentService.useVercelBlob = process.env.USE_VERCEL_BLOB;
+      debugInfo.agentService.vercelEnv = process.env.VERCEL;
 
       // Check what paths the adapter is trying
       const primaryDir = path.join(os.homedir(), '.wama');

@@ -32,12 +32,15 @@ export class ServiceFactory {
     const config = ConfigLoader.getInstance().loadServerConfig();
     const isProduction = process.env.NODE_ENV === 'production';
     const isVercelEnv = process.env.VERCEL === '1';
+    const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
 
-    if (isProduction && isVercelEnv && process.env.USE_VERCEL_BLOB === 'true') {
-      // Use Vercel Blob in production (if explicitly enabled)
+    // Only use Vercel Blob if explicitly enabled AND token is configured
+    if (isProduction && isVercelEnv && process.env.USE_VERCEL_BLOB === 'true' && hasBlobToken) {
+      console.log('[ServiceFactory] Using VercelBlobAdapter');
       this.storageAdapter = new VercelBlobAdapter('wama');
     } else {
       // Use hybrid file system (tries ~/.wama, falls back to ./wama repo files)
+      console.log('[ServiceFactory] Using HybridFileSystemAdapter');
       this.storageAdapter = new HybridFileSystemAdapter();
     }
 
