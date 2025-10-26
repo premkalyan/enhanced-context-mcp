@@ -25,10 +25,16 @@ interface Agent {
 }
 
 export default function TestPage() {
+  // Natural Language Input (Primary Method)
+  const [taskStatement, setTaskStatement] = useState('');
+  const [useAdvanced, setUseAdvanced] = useState(false);
+
+  // Advanced/Manual Override (Optional)
   const [queryType, setQueryType] = useState('story');
   const [taskIntent, setTaskIntent] = useState('create');
   const [scope, setScope] = useState('story');
   const [complexity, setComplexity] = useState('medium');
+
   const [agentType, setAgentType] = useState('all');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
@@ -47,30 +53,23 @@ export default function TestPage() {
   const testScenarios = [
     {
       name: 'E-commerce User Story',
-      query_type: 'story',
-      task_intent: 'create',
-      scope: 'story',
-      complexity: 'medium',
-      domain_focus: ['payments', 'security'],
-      user_query: 'Create a user story for adding credit card payment processing'
+      task_statement: 'I need to create a user story for adding credit card payment processing with strong security'
     },
     {
       name: 'Healthcare Security Review',
-      query_type: 'security',
-      task_intent: 'review',
-      scope: 'epic',
-      complexity: 'critical',
-      domain_focus: ['security', 'compliance'],
-      user_query: 'Review patient data encryption and HIPAA compliance'
+      task_statement: 'Review patient data encryption and HIPAA compliance for our healthcare application'
     },
     {
       name: 'Architecture Design',
-      query_type: 'architecture-diagrams',
-      task_intent: 'create',
-      scope: 'epic',
-      complexity: 'complex',
-      domain_focus: ['infrastructure', 'backend'],
-      user_query: 'Design microservices architecture for order processing system'
+      task_statement: 'Design microservices architecture for order processing system with high availability'
+    },
+    {
+      name: 'API Documentation',
+      task_statement: 'Create comprehensive API documentation for our REST endpoints with examples'
+    },
+    {
+      name: 'Testing Strategy',
+      task_statement: 'Plan testing strategy for user authentication feature including unit and integration tests'
     }
   ];
 
@@ -79,6 +78,23 @@ export default function TestPage() {
     setResult(null);
 
     try {
+      // Build arguments based on mode
+      const toolArgs: any = {};
+
+      if (useAdvanced) {
+        // Advanced mode: Use structured parameters
+        toolArgs.query_type = queryType;
+        toolArgs.task_intent = taskIntent;
+        toolArgs.scope = scope;
+        toolArgs.complexity = complexity;
+      } else {
+        // Natural language mode: Use task_statement for intent analysis
+        if (!taskStatement.trim()) {
+          throw new Error('Please enter a task description');
+        }
+        toolArgs.task_statement = taskStatement;
+      }
+
       const response = await fetch('/api/mcp', {
         method: 'POST',
         headers: {
@@ -87,12 +103,7 @@ export default function TestPage() {
         },
         body: JSON.stringify({
           tool: 'load_enhanced_context',
-          arguments: {
-            query_type: queryType,
-            task_intent: taskIntent,
-            scope: scope,
-            complexity: complexity,
-          }
+          arguments: toolArgs
         })
       });
 
@@ -185,7 +196,9 @@ export default function TestPage() {
         },
         body: JSON.stringify({
           tool: 'load_enhanced_context',
-          arguments: scenario
+          arguments: {
+            task_statement: scenario.task_statement
+          }
         })
       });
 
@@ -415,74 +428,103 @@ export default function TestPage() {
           <div className="space-y-6">
             {/* Test Enhanced Context */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-2xl font-semibold mb-4">Test Enhanced Context</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold">Test Enhanced Context</h2>
+                <button
+                  onClick={() => setUseAdvanced(!useAdvanced)}
+                  className="text-sm px-3 py-1 rounded border hover:bg-gray-50"
+                >
+                  {useAdvanced ? '🤖 Natural Language' : '⚙️ Advanced Mode'}
+                </button>
+              </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Query Type</label>
-                  <select
-                    value={queryType}
-                    onChange={(e) => setQueryType(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
-                  >
-                    {queryTypes.map(qt => (
-                      <option key={qt} value={qt}>{qt}</option>
-                    ))}
-                  </select>
-                </div>
+                {!useAdvanced ? (
+                  /* Natural Language Mode (Primary) */
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      📝 Describe what you want to do (Intent Analysis)
+                    </label>
+                    <textarea
+                      value={taskStatement}
+                      onChange={(e) => setTaskStatement(e.target.value)}
+                      placeholder="Example: I need to create a user story for adding credit card payment processing with strong security..."
+                      className="w-full border rounded px-3 py-2 h-32"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 The system will analyze your description and automatically determine the query type, intent, scope, and complexity
+                    </p>
+                  </div>
+                ) : (
+                  /* Advanced Mode - Manual Parameters */
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Query Type</label>
+                      <select
+                        value={queryType}
+                        onChange={(e) => setQueryType(e.target.value)}
+                        className="w-full border rounded px-3 py-2"
+                      >
+                        {queryTypes.map(qt => (
+                          <option key={qt} value={qt}>{qt}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Task Intent</label>
-                  <select
-                    value={taskIntent}
-                    onChange={(e) => setTaskIntent(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
-                  >
-                    <option value="create">Create</option>
-                    <option value="refine">Refine</option>
-                    <option value="breakdown">Breakdown</option>
-                    <option value="review">Review</option>
-                    <option value="plan">Plan</option>
-                    <option value="implement">Implement</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Task Intent</label>
+                      <select
+                        value={taskIntent}
+                        onChange={(e) => setTaskIntent(e.target.value)}
+                        className="w-full border rounded px-3 py-2"
+                      >
+                        <option value="create">Create</option>
+                        <option value="refine">Refine</option>
+                        <option value="breakdown">Breakdown</option>
+                        <option value="review">Review</option>
+                        <option value="plan">Plan</option>
+                        <option value="implement">Implement</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Scope</label>
-                  <select
-                    value={scope}
-                    onChange={(e) => setScope(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
-                  >
-                    <option value="epic">Epic</option>
-                    <option value="story">Story</option>
-                    <option value="subtask">Subtask</option>
-                    <option value="portfolio">Portfolio</option>
-                    <option value="theme">Theme</option>
-                    <option value="spike">Spike</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Scope</label>
+                      <select
+                        value={scope}
+                        onChange={(e) => setScope(e.target.value)}
+                        className="w-full border rounded px-3 py-2"
+                      >
+                        <option value="epic">Epic</option>
+                        <option value="story">Story</option>
+                        <option value="subtask">Subtask</option>
+                        <option value="portfolio">Portfolio</option>
+                        <option value="theme">Theme</option>
+                        <option value="spike">Spike</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Complexity</label>
-                  <select
-                    value={complexity}
-                    onChange={(e) => setComplexity(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
-                  >
-                    <option value="simple">Simple</option>
-                    <option value="medium">Medium</option>
-                    <option value="complex">Complex</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Complexity</label>
+                      <select
+                        value={complexity}
+                        onChange={(e) => setComplexity(e.target.value)}
+                        className="w-full border rounded px-3 py-2"
+                      >
+                        <option value="simple">Simple</option>
+                        <option value="medium">Medium</option>
+                        <option value="complex">Complex</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </div>
+                  </>
+                )}
 
                 <button
                   onClick={testEnhancedContext}
                   disabled={loading}
                   className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {loading ? 'Loading...' : 'Test Enhanced Context'}
+                  {loading ? 'Loading...' : useAdvanced ? 'Test with Parameters' : 'Test with Intent Analysis'}
                 </button>
               </div>
             </div>
@@ -519,6 +561,7 @@ export default function TestPage() {
             {/* Test Scenarios */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-2xl font-semibold mb-4">Predefined Test Scenarios</h2>
+              <p className="text-sm text-gray-600 mb-4">Click to test natural language intent analysis</p>
 
               <div className="space-y-2">
                 {testScenarios.map((scenario, idx) => (
@@ -529,7 +572,7 @@ export default function TestPage() {
                     className="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700 disabled:bg-gray-400 text-left px-4"
                   >
                     <div className="font-medium">{scenario.name}</div>
-                    <div className="text-sm opacity-80">{scenario.user_query}</div>
+                    <div className="text-sm opacity-80">{scenario.task_statement}</div>
                   </button>
                 ))}
               </div>
