@@ -92,8 +92,17 @@ export async function GET(request: NextRequest) {
       try {
         await fs.access(debugInfo.agentService.adapterPaths.fallbackAgents);
         debugInfo.agentService.fallbackAgentsExists = true;
-      } catch {
+
+        // Read directly with fs.readdir to see what's there
+        const directRead = await fs.readdir(debugInfo.agentService.adapterPaths.fallbackAgents, { withFileTypes: true });
+        debugInfo.agentService.fallbackAgentsDirectRead = directRead.length;
+        debugInfo.agentService.fallbackAgentsFiles = directRead
+          .filter(e => e.isFile())
+          .map(e => e.name)
+          .slice(0, 5);
+      } catch (err) {
         debugInfo.agentService.fallbackAgentsExists = false;
+        debugInfo.agentService.fallbackAgentsError = (err as Error).message;
       }
 
       try {
