@@ -119,11 +119,21 @@ export class HybridFileSystemAdapter implements IStorageAdapter {
   }
 
   async initialize(): Promise<void> {
-    // Ensure primary directory exists
-    await fs.mkdir(this.primaryDir, { recursive: true });
-    await fs.mkdir(path.join(this.primaryDir, 'contexts'), { recursive: true });
-    await fs.mkdir(path.join(this.primaryDir, 'templates'), { recursive: true });
-    await fs.mkdir(path.join(this.primaryDir, 'agents'), { recursive: true });
-    await fs.mkdir(path.join(this.primaryDir, 'domain-agents'), { recursive: true });
+    // Only create directories if primary path is writable (local dev)
+    // In production (Vercel), skip to use repo files from fallback
+    try {
+      await fs.mkdir(this.primaryDir, { recursive: true });
+      await fs.access(this.primaryDir, fs.constants.W_OK);
+
+      // Primary is writable, create subdirectories
+      await fs.mkdir(path.join(this.primaryDir, 'contexts'), { recursive: true });
+      await fs.mkdir(path.join(this.primaryDir, 'templates'), { recursive: true });
+      await fs.mkdir(path.join(this.primaryDir, 'agents'), { recursive: true });
+      await fs.mkdir(path.join(this.primaryDir, 'domain-agents'), { recursive: true });
+      console.log(`[HybridFS] Initialized writable primary directory: ${this.primaryDir}`);
+    } catch (err) {
+      // Primary not writable or doesn't exist, will use fallback (repo files)
+      console.log(`[HybridFS] Primary not writable, will use fallback:`, this.fallbackDir);
+    }
   }
 }
