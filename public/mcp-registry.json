@@ -1,6 +1,6 @@
 {
-  "version": "1.5.0",
-  "lastUpdated": "2025-10-26T12:30:00.000Z",
+  "version": "1.6.0",
+  "lastUpdated": "2025-10-26T15:45:00.000Z",
   "mcpServers": {
     "project-registry": {
       "name": "Project Registry",
@@ -478,7 +478,7 @@
     "storycrafter": {
       "name": "StoryCrafter MCP",
       "url": "https://storycrafter-mcp.vercel.app",
-      "description": "AI-powered backlog generator for VISHKAR 3-agent consensus discussions. Generates 6-8 comprehensive epics with 20-40 detailed user stories, complete with acceptance criteria, technical tasks, story points, and time estimates. Use this AFTER Enhanced Context MCP when you have consensus messages and need to create a complete project backlog.",
+      "description": "AI-powered backlog generator for VISHKAR project context. Two-phase workflow: Fast epic generation (15-20s) with Claude Sonnet 4.5, then detailed story generation (3-5min) with GPT-5. Supports iterative refinement with regenerate_epic and regenerate_story based on user feedback. Use this AFTER Enhanced Context MCP when you have VISHKAR project context (project_summary, final_decisions) and need to create a complete project backlog.",
       "transport": "http",
       "authentication": {
         "type": "none",
@@ -486,16 +486,46 @@
       },
       "tools": [
         {
-          "name": "generate_backlog",
-          "description": "Generate complete project backlog from VISHKAR 3-agent consensus discussion (system, alex, blake, casey messages). Returns structured backlog with 6-8 epics, 20-40 stories, acceptance criteria in Given/When/Then format, technical implementation tasks, story points (Fibonacci scale), estimated hours, dependencies, tags, and MVP prioritization. Takes 30-60 seconds to generate.",
+          "name": "generate_epics",
+          "description": "⚡ FAST (15-20 seconds): Generate 5-8 high-level Epics from VISHKAR project context using Claude Sonnet 4.5. Returns epic structure with titles, descriptions, priorities, categories, and acceptance criteria. Use this FIRST to get quick epic overview before generating detailed stories.",
           "endpoint": "/api/mcp",
-          "method": "POST"
+          "method": "POST",
+          "parameters": {
+            "project_context": "Required. VISHKAR project context object with project_summary and final_decisions"
+          }
         },
         {
-          "name": "get_backlog_summary",
-          "description": "Extract summary statistics from a generated backlog: total epics, total stories, total hours, and breakdown by epic",
+          "name": "generate_stories",
+          "description": "🔄 DETAILED (3-5 minutes): Generate detailed User Stories for epics using GPT-5 (128K output). Takes project context + epic array and returns comprehensive stories with acceptance criteria (Given/When/Then), technical implementation tasks, story points (Fibonacci), estimated hours, dependencies, tags, and MVP prioritization. Call this AFTER generate_epics for full backlog.",
           "endpoint": "/api/mcp",
-          "method": "POST"
+          "method": "POST",
+          "parameters": {
+            "project_context": "Required. Original VISHKAR project context",
+            "epics": "Required. Array of epic objects from generate_epics output"
+          }
+        },
+        {
+          "name": "regenerate_epic",
+          "description": "🔄 REGENERATE EPIC (20-30 seconds): Regenerate a single epic based on user feedback using Claude Sonnet 4.5. When user is unhappy with an epic, use this to create an improved version incorporating their comments. Returns updated epic with same structure.",
+          "endpoint": "/api/mcp",
+          "method": "POST",
+          "parameters": {
+            "project_context": "Required. Original VISHKAR project context",
+            "epic": "Required. The epic object to regenerate (must include id, title, description)",
+            "user_feedback": "Required. User comments/feedback on what needs to be changed or improved"
+          }
+        },
+        {
+          "name": "regenerate_story",
+          "description": "🔄 REGENERATE STORY (1-2 minutes): Regenerate a single user story based on user feedback using GPT-5. When user is unhappy with a story, use this to create an improved version with better acceptance criteria and technical tasks. Returns updated story with same structure.",
+          "endpoint": "/api/mcp",
+          "method": "POST",
+          "parameters": {
+            "project_context": "Required. Original VISHKAR project context",
+            "epic": "Required. The parent epic object for context",
+            "story": "Required. The story object to regenerate (must include id, title, description)",
+            "user_feedback": "Required. User comments/feedback on what needs to be changed or improved"
+          }
         }
       ]
     }
