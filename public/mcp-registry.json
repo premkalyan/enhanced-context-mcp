@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "lastUpdated": "2025-10-26T19:00:00.000Z",
+  "version": "1.5.0",
+  "lastUpdated": "2025-10-26T12:30:00.000Z",
   "mcpServers": {
     "project-registry": {
       "name": "Project Registry",
@@ -54,7 +54,7 @@
     "enhanced-context": {
       "name": "Enhanced Context MCP",
       "url": "https://enhanced-context-mcp.vercel.app",
-      "description": "Intelligent context, template, and agent selection based on task intent, scope, and complexity. Provides SDLC guidance, quality checks, common mistakes to avoid, and best practices. USE THIS FIRST before creating any JIRA issues or documentation to get proper format, structure, and guidance.",
+      "description": "Intelligent context, template, and agent selection with 38 specialized agents (32 technical + 6 domain experts). Provides intent-based context loading, SDLC guidance, quality checks, common mistakes, and best practices. Domain agents for e-commerce, healthcare, fintech, CX design, privacy, and supply chain planning. Technical agents for code, security, cloud, deployment, and testing. USE THIS FIRST before creating any JIRA issues or documentation.",
       "transport": "http",
       "authentication": {
         "type": "api-key",
@@ -64,15 +64,28 @@
       "tools": [
         {
           "name": "load_enhanced_context",
-          "description": "Load intelligent contexts, templates, and agents based on task parameters. Returns: epic prefix format, story structure, acceptance criteria format, quality checks, common mistakes, best practices, SDLC step guidance, agent persona, and relevant templates.",
+          "description": "Load intelligent contexts, templates, and agents based on task intent, scope, complexity, and domain focus. Supports intent-based analysis of natural language queries. Returns: epic prefix format, story structure, acceptance criteria, quality checks, common mistakes, best practices, SDLC guidance, agent persona, and templates.",
           "endpoint": "/api/mcp",
-          "method": "POST"
+          "method": "POST",
+          "parameters": {
+            "query_type": "Required. Type of query (story, testing, security, architecture, architecture-diagrams, pr-review, documentation, infrastructure, etc)",
+            "task_intent": "Optional. What you want to do: create, refine, breakdown, review, plan, implement",
+            "scope": "Optional. Work scope: epic, story, subtask, portfolio, theme, spike",
+            "complexity": "Optional. Complexity level: simple, medium, complex, critical",
+            "output_format": "Optional. Output destination: jira, confluence, github, gitlab",
+            "domain_focus": "Optional. Domain areas needing attention: security, payments, compliance, performance, accessibility, data, infrastructure, api, frontend, backend",
+            "user_query": "Optional. Original natural language query for semantic understanding",
+            "project_path": "Optional. Project path (auto-detected if not provided)"
+          }
         },
         {
           "name": "list_vishkar_agents",
-          "description": "List all available VISHKAR agent profiles (32 specialized agents including frontend, backend, cloud, security, testing, etc)",
+          "description": "List all available VISHKAR agent profiles. Filter by type: 'technical' (32 agents: code, security, cloud, deployment, testing), 'domain_expert' (6 agents: e-commerce, healthcare, fintech, CX, privacy, supply chain), or 'all' (38 total agents). Domain agents for planning, technical agents for implementation.",
           "endpoint": "/api/mcp",
-          "method": "POST"
+          "method": "POST",
+          "parameters": {
+            "agent_type": "Optional. Filter by type: 'domain_expert', 'technical', or 'all' (default: 'all')"
+          }
         },
         {
           "name": "load_vishkar_agent",
