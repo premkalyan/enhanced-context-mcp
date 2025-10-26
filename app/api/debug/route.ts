@@ -63,30 +63,60 @@ export async function GET(request: NextRequest) {
     // Test AgentService
     try {
       const agentService = ServiceFactory.createAgentService();
+      debugInfo.agentService.created = true;
+
+      // Test storage adapter directly
+      const storageAdapter = ServiceFactory.getStorageAdapter();
+
+      try {
+        const agentsList = await storageAdapter.list('agents');
+        debugInfo.agentService.directListAgents = agentsList.length;
+      } catch (err) {
+        debugInfo.agentService.directListAgentsError = (err as Error).message;
+      }
+
+      try {
+        const domainAgentsList = await storageAdapter.list('domain-agents');
+        debugInfo.agentService.directListDomainAgents = domainAgentsList.length;
+      } catch (err) {
+        debugInfo.agentService.directListDomainAgentsError = (err as Error).message;
+      }
 
       // Try listing all agents
-      const allAgents = await agentService.listVishkarAgents('all');
-      debugInfo.agentService.allAgentsCount = allAgents.length;
-      debugInfo.agentService.allAgentsSample = allAgents.slice(0, 5).map(a => ({
-        id: a.id,
-        name: a.name,
-        type: a.type
-      }));
+      try {
+        const allAgents = await agentService.listVishkarAgents('all');
+        debugInfo.agentService.allAgentsCount = allAgents.length;
+        debugInfo.agentService.allAgentsSample = allAgents.slice(0, 5).map(a => ({
+          id: a.id,
+          name: a.name,
+          type: a.type
+        }));
+      } catch (err) {
+        debugInfo.agentService.allAgentsError = (err as Error).message;
+      }
 
       // Try listing domain agents
-      const domainAgents = await agentService.listVishkarAgents('domain_expert');
-      debugInfo.agentService.domainAgentsCount = domainAgents.length;
-      debugInfo.agentService.domainAgents = domainAgents.map(a => ({
-        id: a.id,
-        name: a.name,
-        type: a.type,
-        description: a.description?.substring(0, 100)
-      }));
+      try {
+        const domainAgents = await agentService.listVishkarAgents('domain_expert');
+        debugInfo.agentService.domainAgentsCount = domainAgents.length;
+        debugInfo.agentService.domainAgents = domainAgents.map(a => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          description: a.description?.substring(0, 100)
+        }));
+      } catch (err) {
+        debugInfo.agentService.domainAgentsError = (err as Error).message;
+      }
 
       // Try listing technical agents
-      const technicalAgents = await agentService.listVishkarAgents('technical');
-      debugInfo.agentService.technicalAgentsCount = technicalAgents.length;
-      debugInfo.agentService.technicalAgentsSample = technicalAgents.slice(0, 3).map(a => a.id);
+      try {
+        const technicalAgents = await agentService.listVishkarAgents('technical');
+        debugInfo.agentService.technicalAgentsCount = technicalAgents.length;
+        debugInfo.agentService.technicalAgentsSample = technicalAgents.slice(0, 3).map(a => a.id);
+      } catch (err) {
+        debugInfo.agentService.technicalAgentsError = (err as Error).message;
+      }
 
     } catch (error) {
       debugInfo.agentService.error = (error as Error).message;
