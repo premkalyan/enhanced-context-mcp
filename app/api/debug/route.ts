@@ -67,10 +67,39 @@ export async function GET(request: NextRequest) {
 
       // Test storage adapter directly
       const storageAdapter = ServiceFactory.getStorageAdapter();
+      debugInfo.agentService.storageAdapterType = storageAdapter.constructor.name;
+
+      // Check what paths the adapter is trying
+      const primaryDir = path.join(os.homedir(), '.wama');
+      const fallbackDir = path.join(process.cwd(), 'wama');
+      debugInfo.agentService.adapterPaths = {
+        primary: primaryDir,
+        fallback: fallbackDir,
+        primaryAgents: path.join(primaryDir, 'agents'),
+        fallbackAgents: path.join(fallbackDir, 'agents'),
+        primaryDomainAgents: path.join(primaryDir, 'domain-agents'),
+        fallbackDomainAgents: path.join(fallbackDir, 'domain-agents')
+      };
+
+      // Check if directories exist
+      try {
+        await fs.access(debugInfo.agentService.adapterPaths.primaryAgents);
+        debugInfo.agentService.primaryAgentsExists = true;
+      } catch {
+        debugInfo.agentService.primaryAgentsExists = false;
+      }
+
+      try {
+        await fs.access(debugInfo.agentService.adapterPaths.fallbackAgents);
+        debugInfo.agentService.fallbackAgentsExists = true;
+      } catch {
+        debugInfo.agentService.fallbackAgentsExists = false;
+      }
 
       try {
         const agentsList = await storageAdapter.list('agents');
         debugInfo.agentService.directListAgents = agentsList.length;
+        debugInfo.agentService.directListAgentsSample = agentsList.slice(0, 3);
       } catch (err) {
         debugInfo.agentService.directListAgentsError = (err as Error).message;
       }
@@ -78,6 +107,7 @@ export async function GET(request: NextRequest) {
       try {
         const domainAgentsList = await storageAdapter.list('domain-agents');
         debugInfo.agentService.directListDomainAgents = domainAgentsList.length;
+        debugInfo.agentService.directListDomainAgentsSample = domainAgentsList.slice(0, 3);
       } catch (err) {
         debugInfo.agentService.directListDomainAgentsError = (err as Error).message;
       }
