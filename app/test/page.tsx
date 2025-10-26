@@ -9,6 +9,14 @@ interface TestResult {
   error?: string;
 }
 
+interface ValidationTestResult {
+  name: string;
+  passed: boolean;
+  message: string;
+  duration: number;
+  details?: any;
+}
+
 interface Agent {
   id: string;
   name: string;
@@ -27,6 +35,8 @@ export default function TestPage() {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [agentDetails, setAgentDetails] = useState<any>(null);
+  const [validationResults, setValidationResults] = useState<ValidationTestResult[]>([]);
+  const [runningValidation, setRunningValidation] = useState(false);
 
   const queryTypes = [
     'story', 'testing', 'security', 'architecture', 'architecture-diagrams',
@@ -201,6 +211,197 @@ export default function TestPage() {
       newExpanded.add(key);
     }
     setExpandedItems(newExpanded);
+  };
+
+  const runValidationTests = async () => {
+    setRunningValidation(true);
+    setValidationResults([]);
+
+    const baseUrl = window.location.origin;
+    const results: ValidationTestResult[] = [];
+
+    // Test 1: Health Endpoint
+    try {
+      const start = Date.now();
+      const response = await fetch(`${baseUrl}/api/health`);
+      const data = await response.json();
+      results.push({
+        name: 'Health Endpoint',
+        passed: response.ok && data.status === 'healthy',
+        message: response.ok ? 'Health check passed' : 'Health check failed',
+        duration: Date.now() - start,
+        details: data
+      });
+    } catch (error) {
+      results.push({
+        name: 'Health Endpoint',
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+        duration: 0
+      });
+    }
+
+    // Test 2: All Agents
+    try {
+      const start = Date.now();
+      const response = await fetch(`${baseUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'list_vishkar_agents',
+          arguments: { agent_type: 'all' }
+        })
+      });
+      const data = await response.json();
+      const agents = data.result || [];
+      results.push({
+        name: 'All Agents',
+        passed: response.ok && agents.length >= 38,
+        message: `Found ${agents.length} agents (expected 38+)`,
+        duration: Date.now() - start,
+        details: { count: agents.length }
+      });
+    } catch (error) {
+      results.push({
+        name: 'All Agents',
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+        duration: 0
+      });
+    }
+
+    // Test 3: Domain Agents
+    try {
+      const start = Date.now();
+      const response = await fetch(`${baseUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'list_vishkar_agents',
+          arguments: { agent_type: 'domain_expert' }
+        })
+      });
+      const data = await response.json();
+      const agents = data.result || [];
+      results.push({
+        name: 'Domain Agents',
+        passed: response.ok && agents.length >= 6,
+        message: `Found ${agents.length} domain experts (expected 6+)`,
+        duration: Date.now() - start,
+        details: { count: agents.length }
+      });
+    } catch (error) {
+      results.push({
+        name: 'Domain Agents',
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+        duration: 0
+      });
+    }
+
+    // Test 4: Technical Agents
+    try {
+      const start = Date.now();
+      const response = await fetch(`${baseUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'list_vishkar_agents',
+          arguments: { agent_type: 'technical' }
+        })
+      });
+      const data = await response.json();
+      const agents = data.result || [];
+      results.push({
+        name: 'Technical Agents',
+        passed: response.ok && agents.length >= 32,
+        message: `Found ${agents.length} technical agents (expected 32+)`,
+        duration: Date.now() - start,
+        details: { count: agents.length }
+      });
+    } catch (error) {
+      results.push({
+        name: 'Technical Agents',
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+        duration: 0
+      });
+    }
+
+    // Test 5: Enhanced Context Basic
+    try {
+      const start = Date.now();
+      const response = await fetch(`${baseUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'load_enhanced_context',
+          arguments: {
+            query_type: 'story',
+            user_query: 'Test authentication feature'
+          }
+        })
+      });
+      const data = await response.json();
+      const result = data.result || {};
+      const passed = response.ok &&
+                    (result.contexts?.length > 0 || false) &&
+                    (result.templates?.length > 0 || false);
+      results.push({
+        name: 'Enhanced Context',
+        passed,
+        message: passed ? 'Context loading works' : 'Context loading failed',
+        duration: Date.now() - start,
+        details: {
+          contexts: result.contexts?.length || 0,
+          templates: result.templates?.length || 0
+        }
+      });
+    } catch (error) {
+      results.push({
+        name: 'Enhanced Context',
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+        duration: 0
+      });
+    }
+
+    // Test 6: Intent-Based Context
+    try {
+      const start = Date.now();
+      const response = await fetch(`${baseUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'load_enhanced_context',
+          arguments: {
+            query_type: 'story',
+            task_intent: 'create',
+            scope: 'story',
+            complexity: 'medium',
+            domain_focus: ['security'],
+            user_query: 'Create secure payment feature'
+          }
+        })
+      });
+      const data = await response.json();
+      results.push({
+        name: 'Intent-Based Context',
+        passed: response.ok && data.result,
+        message: response.ok ? 'Intent analysis works' : 'Intent analysis failed',
+        duration: Date.now() - start
+      });
+    } catch (error) {
+      results.push({
+        name: 'Intent-Based Context',
+        passed: false,
+        message: `Error: ${(error as Error).message}`,
+        duration: 0
+      });
+    }
+
+    setValidationResults(results);
+    setRunningValidation(false);
   };
 
   return (
@@ -584,6 +785,107 @@ export default function TestPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Automated Validation Tests */}
+        <div className="mt-8 bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold">Automated Validation Tests</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Run comprehensive automated tests to validate all MCP functionality
+              </p>
+            </div>
+            <button
+              onClick={runValidationTests}
+              disabled={runningValidation}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 font-medium"
+            >
+              {runningValidation ? 'Running Tests...' : 'Run All Tests'}
+            </button>
+          </div>
+
+          {validationResults.length > 0 && (
+            <div>
+              {/* Summary */}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600">Total Tests</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {validationResults.length}
+                  </div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600">Passed</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {validationResults.filter(r => r.passed).length}
+                  </div>
+                </div>
+                <div className="bg-red-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600">Failed</div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {validationResults.filter(r => !r.passed).length}
+                  </div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600">Success Rate</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {Math.round((validationResults.filter(r => r.passed).length / validationResults.length) * 100)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Test Results */}
+              <div className="space-y-3">
+                {validationResults.map((test, idx) => (
+                  <div
+                    key={idx}
+                    className={`border-l-4 rounded-lg p-4 ${
+                      test.passed
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-red-500 bg-red-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">
+                            {test.passed ? '✅' : '❌'}
+                          </span>
+                          <div>
+                            <div className="font-semibold text-lg">{test.name}</div>
+                            <div className={`text-sm ${
+                              test.passed ? 'text-green-700' : 'text-red-700'
+                            }`}>
+                              {test.message}
+                            </div>
+                          </div>
+                        </div>
+                        {test.details && (
+                          <div className="mt-2 ml-11">
+                            <button
+                              onClick={() => toggleExpand(`validation-${idx}`)}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              {expandedItems.has(`validation-${idx}`) ? 'Hide' : 'Show'} details
+                            </button>
+                            {expandedItems.has(`validation-${idx}`) && (
+                              <pre className="mt-2 text-xs bg-white p-3 rounded overflow-x-auto">
+                                {JSON.stringify(test.details, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {test.duration}ms
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
