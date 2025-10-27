@@ -1,6 +1,6 @@
 {
-  "version": "1.6.0",
-  "lastUpdated": "2025-10-26T15:45:00.000Z",
+  "version": "1.7.0",
+  "lastUpdated": "2025-10-27T05:20:00.000Z",
   "mcpServers": {
     "project-registry": {
       "name": "Project Registry",
@@ -273,12 +273,12 @@
     "confluence": {
       "name": "Confluence MCP",
       "url": "https://confluence-mcp-six.vercel.app",
-      "description": "Complete Confluence documentation management with 32 tools: spaces, pages, templates, attachments, folders, macros, labels, history, JIRA integration, and permissions. Upload documents, embed attachments, create page templates, insert JIRA macros, and manage page hierarchy. Use Enhanced Context MCP first to get proper documentation templates and structure. NOTE: spaceKey is now OPTIONAL - automatically fetched from Project Registry via API key.",
+      "description": "Complete Confluence documentation management with 32 tools (70% tested and working - 23/33 tools passing): spaces, pages, templates, attachments, folders, macros, labels, history, JIRA integration, and permissions. Successfully tested: image embedding workflow (generate diagram → upload → embed). Known issues (will fix later): search (CQL syntax), update_page (version handling), create_page_template (API endpoint). Upload documents, embed images, create page templates, insert JIRA macros, and manage page hierarchy. Use Enhanced Context MCP first to get proper documentation templates and structure. NOTE: spaceKey is OPTIONAL - automatically fetched from Project Registry.",
       "transport": "http",
       "authentication": {
-        "type": "api-key",
-        "header": "X-API-Key",
-        "note": "Use project API key from Project Registry. Credentials, Confluence URL, and default spaceKey are auto-fetched."
+        "type": "bearer",
+        "header": "Authorization",
+        "note": "Use Bearer token with project API key from Project Registry. Format: 'Authorization: Bearer YOUR_TOKEN'. Credentials, Confluence URL, and default spaceKey are auto-fetched from registry."
       },
       "tools": [
         {
