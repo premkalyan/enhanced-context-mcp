@@ -5,10 +5,26 @@ export default function Home() {
       <p className="mb-4 text-gray-700">Version 2.0.0 - Serverless with Project Registry Integration</p>
 
       <section className="mb-8">
-        <h2 className="text-2xl font-bold mt-8 mb-4 text-black">Available Endpoints</h2>
+        <h2 className="text-2xl font-bold mt-8 mb-4 text-black">API Documentation</h2>
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+          <p className="text-black font-semibold mb-2">Interactive API Documentation</p>
+          <p className="text-gray-700 mb-3">
+            Explore and test the API endpoints using our interactive Swagger UI documentation.
+          </p>
+          <a
+            href="/docs"
+            className="inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Open API Documentation
+          </a>
+        </div>
+
+        <h3 className="text-xl font-semibold mt-6 mb-3 text-black">Available Endpoints</h3>
         <ul className="list-disc pl-6 space-y-2 text-black">
           <li><code className="bg-gray-100 px-2 py-1 rounded text-black">/api/health</code> - Health check</li>
           <li><code className="bg-gray-100 px-2 py-1 rounded text-black">/api/mcp</code> - Main MCP endpoint (POST)</li>
+          <li><code className="bg-gray-100 px-2 py-1 rounded text-black">/api/mcp-registry</code> - MCP registry data (GET)</li>
+          <li><code className="bg-gray-100 px-2 py-1 rounded text-black">/docs</code> - Interactive Swagger API documentation</li>
         </ul>
       </section>
 
