@@ -280,16 +280,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handle tools/list request
+// Handle tools/list request (public endpoint for documentation)
 export async function GET(request: NextRequest) {
-  // Check authentication
-  if (!isAuthenticated(request)) {
-    return NextResponse.json(
-      { success: false, error: 'Authentication required. Provide X-API-Key header.' },
-      { status: 401 }
-    );
-  }
-
+  // GET endpoint is public to support Swagger UI and API documentation
+  // No authentication required for listing available tools
   return NextResponse.json({
     tools: TOOLS
   });
