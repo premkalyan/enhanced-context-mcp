@@ -59,6 +59,26 @@
       "contexts": ["c-core-sdlc", "c-architecture-generation"],
       "templates": ["architecture-diagrams-mermaid"],
       "description": "System architecture diagrams using Mermaid (MCP, microservices, data pipelines)"
+    },
+    "next-story": {
+      "contexts": ["c-core-sdlc", "c-jira-management", "c-story-prioritization"],
+      "templates": ["story-selection"],
+      "description": "Determine what story to work on next based on prioritization rules"
+    },
+    "implementation": {
+      "contexts": ["c-core-sdlc", "c-jira-management", "c-implementation-flow", "c-git-workflows"],
+      "templates": ["implementation-checklist"],
+      "description": "Start implementing a story with pre-flight checks and TDD flow"
+    },
+    "blocker": {
+      "contexts": ["c-core-sdlc", "c-jira-management", "c-sprint-management"],
+      "templates": ["blocker-communication"],
+      "description": "Handle blockers with escalation process and communication templates"
+    },
+    "deployment": {
+      "contexts": ["c-core-sdlc", "c-git-workflows", "c-infrastructure-as-code"],
+      "templates": ["deployment-checklist"],
+      "description": "Deploy changes with CI/CD checklist and rollback plan"
     }
   },
   "allowedQueryTypes": [
@@ -73,6 +93,10 @@
     "documentation",
     "flow-diagrams",
     "infrastructure",
-    "architecture-diagrams"
+    "architecture-diagrams",
+    "next-story",
+    "implementation",
+    "blocker",
+    "deployment"
   ]
 }

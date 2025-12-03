@@ -327,6 +327,14 @@ export class EnhancedContextService {
     response += `\n**Context Combination**: ${combination.name}\n`;
     response += `**Reasoning**: ${reasoning}\n\n`;
 
+    // Add story prioritization section for relevant query types
+    if (['next-story', 'story', 'implementation'].includes(query_type)) {
+      response += this.buildPrioritizationSection(query_type);
+    }
+
+    // Add MCP tools availability section
+    response += this.buildMCPToolsSection(query_type);
+
     // Add SDLC current step if available
     if (currentStep) {
       response += `## 📋 Current SDLC Step\n\n`;
@@ -546,5 +554,103 @@ export class EnhancedContextService {
       unavailableTools: [],
       warnings: []
     };
+  }
+
+  /**
+   * Build story prioritization section for next-story, story, implementation query types
+   */
+  private buildPrioritizationSection(queryType: string): string {
+    let section = `## 📊 Story Prioritization Rules\n\n`;
+
+    section += `**Priority Order (Highest to Lowest):**\n`;
+    section += `1. **In Progress** - Stories already started (continue momentum)\n`;
+    section += `2. **Blocked Unblocked** - Recently unblocked stories waiting\n`;
+    section += `3. **Sprint Committed** - Stories in current sprint\n`;
+    section += `4. **Epic Deadline** - Parent epic has approaching deadline\n`;
+    section += `5. **High Priority** - P1/Highest priority stories\n`;
+    section += `6. **Assigned to User** - Stories assigned to current user\n`;
+    section += `7. **Dependencies Clear** - Stories with no blocking dependencies\n\n`;
+
+    section += `**Recommended JQL Pattern:**\n`;
+    section += `\`\`\`jql\n`;
+    section += `project = {PROJECT_KEY}\n`;
+    section += `AND status NOT IN (Done, Closed, Resolved)\n`;
+    section += `AND (\n`;
+    section += `  status = "In Progress"\n`;
+    section += `  OR (sprint IN openSprints() AND assignee = currentUser())\n`;
+    section += `  OR priority IN (Highest, High)\n`;
+    section += `)\n`;
+    section += `ORDER BY\n`;
+    section += `  CASE status WHEN "In Progress" THEN 1 ELSE 2 END,\n`;
+    section += `  priority DESC,\n`;
+    section += `  updated DESC\n`;
+    section += `\`\`\`\n\n`;
+
+    section += `**Recommended Next Story Selection:**\n`;
+    section += `- First: Any "In Progress" story (finish what you started)\n`;
+    section += `- Second: Sprint-committed story with highest priority\n`;
+    section += `- Third: Story blocking other stories\n`;
+    section += `- Fourth: Highest priority unassigned story\n\n`;
+
+    return section;
+  }
+
+  /**
+   * Build MCP tools availability section
+   */
+  private buildMCPToolsSection(queryType: string): string {
+    let section = `## 🔧 Available MCP Tools\n\n`;
+
+    // JIRA tools
+    section += `### JIRA (jira-orengrinker)\n`;
+    section += `| Tool | Description |\n`;
+    section += `|------|-------------|\n`;
+    section += `| \`search_issues\` | Search stories with JQL queries |\n`;
+    section += `| \`get_issue_details\` | Get full story details |\n`;
+    section += `| \`transition_issue\` | Update story status |\n`;
+    section += `| \`add_comment\` | Add progress comments |\n`;
+    section += `| \`create_issue\` | Create new stories |\n`;
+    section += `| \`update_issue\` | Update story fields |\n`;
+    section += `| \`link_issues\` | Link related stories |\n\n`;
+
+    // GitHub tools
+    section += `### GitHub\n`;
+    section += `| Tool | Description |\n`;
+    section += `|------|-------------|\n`;
+    section += `| \`create_pull_request\` | Create PR from feature branch |\n`;
+    section += `| \`list_pull_requests\` | List open PRs |\n`;
+    section += `| \`get_pull_request\` | Get PR details and status |\n`;
+    section += `| \`merge_pull_request\` | Merge approved PR |\n`;
+    section += `| \`create_branch\` | Create feature branch |\n\n`;
+
+    // Confluence tools
+    section += `### Confluence\n`;
+    section += `| Tool | Description |\n`;
+    section += `|------|-------------|\n`;
+    section += `| \`create_page\` | Create documentation page |\n`;
+    section += `| \`update_page\` | Update existing page |\n`;
+    section += `| \`get_page\` | Read page content |\n`;
+    section += `| \`search_content\` | Search Confluence |\n\n`;
+
+    // Query-type specific tool recommendations
+    const toolRecommendations: Record<string, string[]> = {
+      'next-story': ['search_issues', 'get_issue_details', 'transition_issue'],
+      'implementation': ['transition_issue', 'add_comment', 'create_branch', 'create_pull_request'],
+      'blocker': ['transition_issue', 'add_comment', 'search_issues'],
+      'deployment': ['merge_pull_request', 'add_comment'],
+      'pr-review': ['get_pull_request', 'add_comment'],
+      'story': ['create_issue', 'update_issue', 'search_issues'],
+      'testing': ['add_comment', 'update_issue'],
+      'documentation': ['create_page', 'update_page']
+    };
+
+    const recommendedTools = toolRecommendations[queryType] || [];
+    if (recommendedTools.length > 0) {
+      section += `### Recommended Tools for \`${queryType}\`\n`;
+      section += recommendedTools.map(tool => `- \`${tool}\``).join('\n');
+      section += `\n\n`;
+    }
+
+    return section;
   }
 }

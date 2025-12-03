@@ -1,0 +1,301 @@
+description: Sprint Management - Sprint context, velocity tracking, capacity planning, and sprint health monitoring
+globs:
+alwaysApply: false
+
+# Sprint Management Context
+
+## Sprint Information Structure
+
+### Sprint Metadata
+```json
+{
+  "sprint": {
+    "id": 42,
+    "name": "Sprint 42",
+    "goal": "Complete user authentication epic",
+    "startDate": "2025-01-15",
+    "endDate": "2025-01-29",
+    "daysRemaining": 7,
+    "workingDaysRemaining": 5,
+    "state": "active"
+  }
+}
+```
+
+### Story Counts
+```json
+{
+  "storyCount": {
+    "total": 15,
+    "completed": 8,
+    "inProgress": 3,
+    "todo": 3,
+    "blocked": 1
+  },
+  "storyPoints": {
+    "committed": 34,
+    "completed": 21,
+    "remaining": 13
+  }
+}
+```
+
+### Velocity Metrics
+```json
+{
+  "velocity": {
+    "current": 21,
+    "average": 32,
+    "trend": "below_average",
+    "projectedCompletion": 28
+  },
+  "capacity": {
+    "total": 40,
+    "available": 35,
+    "utilized": 34
+  }
+}
+```
+
+## Sprint Health Indicators
+
+### Green (On Track)
+**Criteria:**
+- Completion rate >= 50% at sprint midpoint
+- No blocked stories for > 24 hours
+- All high-priority stories started
+- Burndown on or below ideal line
+
+**Actions:**
+- Continue normal workflow
+- Monitor for emerging risks
+
+### Yellow (At Risk)
+**Criteria:**
+- Completion rate 30-50% at midpoint
+- 1-2 blocked stories
+- Some high-priority stories not started
+- Burndown slightly above ideal line
+
+**Actions:**
+- Review sprint scope with team
+- Focus on unblocking
+- Consider scope reduction
+- Daily standup focus on blockers
+
+### Red (Off Track)
+**Criteria:**
+- Completion rate < 30% at midpoint
+- 3+ blocked stories
+- High-priority stories not started
+- Burndown significantly above ideal line
+
+**Actions:**
+- Escalate to stakeholders
+- Emergency scope reduction
+- Consider sprint cancellation
+- Root cause analysis
+
+## JQL Queries for Sprint Management
+
+### Current Sprint Overview
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+ORDER BY rank ASC
+```
+
+### Sprint Burndown Data
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+AND status CHANGED TO "Done" DURING (startOfSprint(), now())
+```
+
+### At-Risk Stories (Overdue)
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+AND status != Done
+AND dueDate < now()
+ORDER BY dueDate ASC
+```
+
+### Blocked Stories
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+AND status = "Blocked"
+ORDER BY updated DESC
+```
+
+### Stories Without Estimates
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+AND "Story Points" is EMPTY
+```
+
+### Unassigned Sprint Stories
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+AND assignee is EMPTY
+AND status = "To Do"
+```
+
+## Sprint Ceremonies
+
+### Daily Standup
+**Purpose:** Sync team on progress and blockers
+**Duration:** 15 minutes max
+**Questions:**
+1. What did I complete yesterday?
+2. What will I work on today?
+3. Any blockers or impediments?
+
+**JIRA Focus:**
+- Review In Progress stories
+- Identify stuck stories (no updates > 2 days)
+- Check for blockers
+
+### Sprint Planning
+**Purpose:** Plan upcoming sprint work
+**Duration:** 2-4 hours
+
+**Activities:**
+1. Review sprint goal
+2. Capacity planning
+3. Story selection and commitment
+4. Task breakdown
+5. Risk identification
+
+### Sprint Review/Demo
+**Purpose:** Demonstrate completed work
+**Duration:** 1-2 hours
+
+**Activities:**
+1. Demo completed stories
+2. Gather stakeholder feedback
+3. Discuss what was learned
+4. Celebrate achievements
+
+### Sprint Retrospective
+**Purpose:** Continuous improvement
+**Duration:** 1-1.5 hours
+
+**Questions:**
+1. What went well?
+2. What didn't go well?
+3. What will we try differently?
+
+## Velocity Calculations
+
+### Current Sprint Velocity
+```
+Velocity = Sum of Story Points completed in sprint
+```
+
+### Average Velocity (Last 3 Sprints)
+```
+Avg Velocity = (Sprint N + Sprint N-1 + Sprint N-2) / 3
+```
+
+### Projected Completion
+```
+Remaining Work = Total Committed - Completed
+Days Remaining = Sprint End Date - Today
+Daily Rate = Completed / Days Elapsed
+Projected = Completed + (Daily Rate * Days Remaining)
+```
+
+## Sprint Metrics Dashboard
+
+### Key Metrics to Track
+| Metric | Formula | Target |
+|--------|---------|--------|
+| Completion Rate | Completed / Committed | > 80% |
+| Scope Change | (Final - Initial) / Initial | < 10% |
+| Blocked Time | Hours stories blocked | < 5% of sprint |
+| Carry Over | Stories moved to next sprint | < 2 stories |
+
+### Burndown Chart Interpretation
+```
+Ideal Line: Linear from total points to 0
+Actual Line: Real completed points over time
+
+Above Ideal = Behind schedule
+Below Ideal = Ahead of schedule
+Flat Line = No progress (investigate)
+```
+
+## MCP Tools for Sprint Management
+
+### Get Sprint Stories
+```typescript
+// List all sprint stories
+await mcp_jira_search_issues({
+  jql: 'project = "PROJECT" AND sprint in openSprints() ORDER BY rank',
+  fields: ['summary', 'status', 'assignee', 'priority', 'customfield_10016']
+});
+```
+
+### Track Progress
+```typescript
+// Find completed stories
+await mcp_jira_search_issues({
+  jql: 'project = "PROJECT" AND sprint in openSprints() AND status = Done'
+});
+```
+
+### Identify Blockers
+```typescript
+// Find blocked stories
+await mcp_jira_search_issues({
+  jql: 'project = "PROJECT" AND sprint in openSprints() AND status = Blocked'
+});
+```
+
+## Sprint Planning Checklist
+
+### Before Sprint Planning
+- [ ] Backlog is groomed and prioritized
+- [ ] Stories have acceptance criteria
+- [ ] Stories are estimated
+- [ ] Team capacity is calculated
+- [ ] Previous sprint velocity is known
+
+### During Sprint Planning
+- [ ] Sprint goal is defined
+- [ ] Stories are selected based on priority
+- [ ] Team commits to sprint scope
+- [ ] Dependencies are identified
+- [ ] Risks are documented
+
+### After Sprint Planning
+- [ ] Sprint board is set up
+- [ ] Stories are assigned (or ready for pickup)
+- [ ] Sprint start date is confirmed
+- [ ] Team is aligned on goal
+
+## Common Sprint Anti-Patterns
+
+### Scope Creep
+**Problem:** Adding stories mid-sprint
+**Solution:** Strict scope change process, require approval
+
+### Zombie Stories
+**Problem:** Stories that never finish
+**Solution:** Time-box stories, break down large stories
+
+### Hero Mode
+**Problem:** One person doing everything
+**Solution:** Balance workload, pair programming
+
+### Blocking Without Resolution
+**Problem:** Stories blocked for days
+**Solution:** Escalation process, daily blocker review
+
+### Late Discovery
+**Problem:** Finding issues at sprint end
+**Solution:** Continuous testing, early reviews

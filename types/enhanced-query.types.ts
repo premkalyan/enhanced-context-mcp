@@ -3,7 +3,7 @@
  * Provides rich parameters for better task intent understanding
  */
 
-export type TaskIntent = 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement';
+export type TaskIntent = 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement' | 'select' | 'escalate' | 'deploy';
 export type TaskScope = 'epic' | 'story' | 'subtask' | 'portfolio' | 'theme' | 'spike';
 export type TaskComplexity = 'simple' | 'medium' | 'complex' | 'critical';
 export type OutputFormat = 'jira' | 'confluence' | 'github' | 'gitlab' | 'report' | 'presentation';
@@ -165,4 +165,81 @@ export interface EnhancedContextResult {
   // Summary
   summary: string;
   reasoning: string[];
+}
+
+// Phase 2 Enhancements - Story Prioritization and MCP Tools
+
+export interface PrioritizationRules {
+  order: string[];  // Ordered priority rules
+  jqlPattern: string;  // JQL query pattern for JIRA
+  recommendedOrder: string[];  // Recommended next story selection logic
+  criteria: PriorityCriteria[];
+}
+
+export interface PriorityCriteria {
+  name: string;
+  weight: number;
+  description: string;
+  jqlFragment?: string;
+}
+
+export interface SprintContext {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  daysRemaining?: number;
+  storyCount?: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    todo: number;
+  };
+  velocity?: number;
+  capacity?: number;
+}
+
+export interface MCPToolAvailability {
+  jira: MCPToolset;
+  github: MCPToolset;
+  confluence: MCPToolset;
+  browser?: MCPToolset;
+  filesystem?: MCPToolset;
+}
+
+export interface MCPToolset {
+  available: boolean;
+  tools: string[];
+  status: 'connected' | 'disconnected' | 'unknown';
+}
+
+export interface AgentRecommendation {
+  recommended: string;
+  available: string[];
+  reason: string;
+}
+
+export interface ImplementationContext {
+  preChecklist: string[];
+  flow: ImplementationStep[];
+  codeQualityGates: string[];
+  branchNamingPattern: string;
+}
+
+export interface ImplementationStep {
+  step: number;
+  name: string;
+  description: string;
+  tools: string[];
+}
+
+export interface BlockerContext {
+  escalationProcess: string[];
+  communicationTemplate: string;
+  stakeholders: string[];
+}
+
+export interface DeploymentContext {
+  cicdChecklist: string[];
+  rollbackPlan: string[];
+  verificationSteps: string[];
 }

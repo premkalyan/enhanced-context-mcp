@@ -1,0 +1,308 @@
+description: Implementation Flow - Pre-implementation checklist, TDD workflow, code quality gates, and branch naming conventions
+globs:
+alwaysApply: false
+
+# Implementation Flow Context
+
+## Pre-Implementation Checklist
+
+### Story Readiness Verification
+- [ ] Story requirements fully understood
+- [ ] Acceptance criteria are clear and testable
+- [ ] Dependencies are resolved or documented
+- [ ] Technical approach validated (for complex stories)
+- [ ] Estimation is reasonable for remaining sprint capacity
+
+### Environment Preparation
+- [ ] Local development environment working
+- [ ] Database/services accessible (local or remote)
+- [ ] Latest main/master branch pulled
+- [ ] All dependencies up to date
+- [ ] IDE/editor configured properly
+
+### Documentation Review
+- [ ] Related stories reviewed for context
+- [ ] API contracts understood (if applicable)
+- [ ] UI mockups/designs reviewed (if applicable)
+- [ ] Architecture diagrams reviewed (if applicable)
+- [ ] Previous implementation patterns understood
+
+## Implementation Flow
+
+### Step 1: Transition Story to In Progress
+
+**JIRA Update:**
+```typescript
+// Move story to "In Progress"
+await mcp_jira_transition_issue({
+  issueKey: "{STORY_KEY}",
+  transitionName: "Start Progress"
+});
+
+// Add implementation start comment
+await mcp_jira_add_comment({
+  issueKey: "{STORY_KEY}",
+  body: `IMPLEMENTATION STARTED
+
+TECHNICAL APPROACH:
+- [Describe your approach]
+- [Key design decisions]
+
+ACCEPTANCE CRITERIA MAPPING:
+- AC1: [How it will be implemented]
+- AC2: [How it will be implemented]
+
+ESTIMATED COMPLETION: [Date/Time]`
+});
+```
+
+### Step 2: Create Feature Branch
+
+**Branch Naming Convention:**
+```bash
+# Pattern: {type}/{story-key}-{short-description}
+# Types: feature, bugfix, hotfix, refactor, docs
+
+# Examples:
+git checkout main
+git pull origin main
+git checkout -b feature/PROJECT-123-user-authentication
+git checkout -b bugfix/PROJECT-456-fix-login-error
+git checkout -b hotfix/PROJECT-789-security-patch
+```
+
+**Branch from Latest:**
+```bash
+# Ensure you're on latest main
+git checkout main
+git pull origin main
+
+# Create and switch to feature branch
+git checkout -b feature/{STORY_KEY}-{short-description}
+```
+
+### Step 3: Test-Driven Development (TDD)
+
+**TDD Cycle:**
+```
+1. RED    → Write failing test for requirement
+2. GREEN  → Write minimal code to pass test
+3. REFACTOR → Clean up while keeping tests green
+4. REPEAT → For each acceptance criterion
+```
+
+**Test First Example:**
+```typescript
+// 1. RED - Write failing test
+describe('UserAuthentication', () => {
+  describe('login', () => {
+    it('should return user token on valid credentials', async () => {
+      const result = await authService.login('user@example.com', 'password123');
+      expect(result.token).toBeDefined();
+      expect(result.user.email).toBe('user@example.com');
+    });
+
+    it('should throw error on invalid credentials', async () => {
+      await expect(
+        authService.login('user@example.com', 'wrongpassword')
+      ).rejects.toThrow('Invalid credentials');
+    });
+  });
+});
+
+// 2. GREEN - Implement minimal code to pass
+// 3. REFACTOR - Clean up implementation
+```
+
+### Step 4: Implementation Guidelines
+
+**Code Quality Standards:**
+- Follow existing code patterns in the codebase
+- Add appropriate error handling
+- Include logging for debugging
+- Document complex logic with comments
+- Keep functions small and focused (< 50 lines)
+- Use meaningful variable/function names
+
+**Error Handling Pattern:**
+```typescript
+try {
+  const result = await someOperation();
+  return result;
+} catch (error) {
+  logger.error('Operation failed', { error, context: { ... } });
+  throw new CustomError('User-friendly message', { cause: error });
+}
+```
+
+### Step 5: Local Quality Verification
+
+**Before Each Commit:**
+```bash
+# Run linter
+npm run lint
+
+# Run type check
+npm run type-check
+
+# Run tests
+npm test
+
+# Check coverage
+npm run test:coverage
+
+# Build verification
+npm run build
+```
+
+**Quality Gates:**
+- [ ] Lint passing (no errors)
+- [ ] TypeScript compilation succeeds
+- [ ] Unit tests pass (>90% coverage for new code)
+- [ ] Integration tests pass
+- [ ] No security vulnerabilities (high/critical)
+- [ ] Build succeeds
+
+### Step 6: Commit Changes
+
+**Commit Message Format:**
+```bash
+# Pattern: {STORY_KEY}: {type}: {description}
+# Types: feat, fix, refactor, test, docs, chore
+
+# Examples:
+git add .
+git commit -m "PROJECT-123: feat: implement user login endpoint"
+git commit -m "PROJECT-123: test: add unit tests for auth service"
+git commit -m "PROJECT-123: fix: handle edge case in token validation"
+```
+
+**Commit Best Practices:**
+- Commit frequently (logical units of work)
+- Keep commits focused (one concern per commit)
+- Write descriptive commit messages
+- Reference story key in every commit
+
+### Step 7: Push and Create PR
+
+**Push Feature Branch:**
+```bash
+git push origin feature/{STORY_KEY}-{short-description}
+```
+
+**Create Pull Request:**
+```bash
+gh pr create --title "PROJECT-123: Implement user authentication" \
+  --body "## Summary
+- Implemented login/logout endpoints
+- Added JWT token generation
+- Integrated with user database
+
+## Acceptance Criteria
+- [x] AC1: User can login with email/password
+- [x] AC2: User receives JWT token
+- [x] AC3: Invalid credentials return 401
+
+## Testing
+- Unit tests: 95% coverage
+- Manual testing: Verified in local environment
+
+## Screenshots
+[If applicable]"
+```
+
+### Step 8: Update JIRA with Progress
+
+**Progress Comment Template:**
+```
+PROGRESS UPDATE - {Date}
+
+COMPLETED:
+- {What was completed}
+
+IN PROGRESS:
+- {Current work}
+
+BLOCKERS:
+- {Any blockers or None}
+
+PR: {PR URL}
+NEXT: {What's next}
+```
+
+## Code Quality Gates
+
+### Automated Checks (CI/CD)
+| Check | Tool | Threshold |
+|-------|------|-----------|
+| Lint | ESLint | 0 errors |
+| Types | TypeScript | 0 errors |
+| Unit Tests | Jest | 90% coverage |
+| Integration | Jest | All passing |
+| Security | npm audit | 0 high/critical |
+| Build | Next.js/Node | Success |
+
+### Manual Checks
+- [ ] Code follows project conventions
+- [ ] Error handling is comprehensive
+- [ ] Logging is appropriate (not excessive)
+- [ ] Documentation is updated
+- [ ] Edge cases are handled
+- [ ] No hardcoded values/secrets
+
+## MCP Tools for Implementation
+
+### Story Management
+```typescript
+// Update progress
+await mcp_jira_add_comment({ issueKey, body: progressUpdate });
+
+// Transition status
+await mcp_jira_transition_issue({ issueKey, transitionName: "In Review" });
+```
+
+### Code Review
+```typescript
+// Create PR
+await mcp_github_create_pull_request({
+  title: "PROJECT-123: Feature description",
+  body: prDescription,
+  base: "main",
+  head: "feature/PROJECT-123-description"
+});
+```
+
+## Common Implementation Patterns
+
+### API Endpoint Pattern
+```typescript
+export async function POST(request: Request) {
+  try {
+    // 1. Validate input
+    const body = await request.json();
+    const validated = schema.parse(body);
+
+    // 2. Execute business logic
+    const result = await service.process(validated);
+
+    // 3. Return response
+    return Response.json({ success: true, data: result });
+  } catch (error) {
+    // 4. Handle errors
+    return handleError(error);
+  }
+}
+```
+
+### Service Pattern
+```typescript
+export class UserService {
+  constructor(private readonly repository: UserRepository) {}
+
+  async createUser(data: CreateUserDto): Promise<User> {
+    // Validate
+    // Execute
+    // Return
+  }
+}
+```

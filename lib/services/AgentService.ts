@@ -148,7 +148,12 @@ export class AgentService {
       'story-breakdown': 'product-manager',
       'documentation': 'technical-writer',
       'flow-diagrams': 'architect',
-      'infrastructure': 'devops-engineer'
+      'infrastructure': 'devops-engineer',
+      'architecture-diagrams': 'architect',
+      'next-story': 'a-project-manager',
+      'implementation': 'a-backend-engineer',
+      'blocker': 'a-project-manager',
+      'deployment': 'a-deployment-engineer'
     };
 
     const preferredAgentId = agentMappings[queryType];

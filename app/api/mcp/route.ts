@@ -26,8 +26,8 @@ const TOOLS = [
         },
         task_intent: {
           type: 'string',
-          enum: ['create', 'refine', 'breakdown', 'review', 'plan', 'implement'],
-          description: 'What you want to do: create (new work), refine (improve existing), breakdown (split into smaller parts), review (evaluate), plan (design), implement (code)'
+          enum: ['create', 'refine', 'breakdown', 'review', 'plan', 'implement', 'select', 'escalate', 'deploy'],
+          description: 'What you want to do: create (new work), refine (improve existing), breakdown (split into smaller parts), review (evaluate), plan (design), implement (code), select (pick next story), escalate (handle blocker), deploy (release to environment)'
         },
         scope: {
           type: 'string',

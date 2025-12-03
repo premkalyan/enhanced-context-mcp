@@ -381,6 +381,190 @@
         ],
         "dependencies": []
       }
+    },
+    {
+      "id": "next-story-select",
+      "name": "Select Next Story",
+      "description": "Determine which story to work on next using prioritization rules",
+      "queryType": "next-story",
+      "taskIntent": "select",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-jira-management",
+        "c-story-prioritization"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('sprint')",
+          "contexts": ["c-sprint-management"],
+          "reason": "Sprint context needed for sprint-aware prioritization"
+        }
+      ],
+      "templates": ["t-story-selection"],
+      "agents": ["a-project-manager", "a-product-manager"],
+      "guidance": {
+        "qualityChecks": [
+          "Check for blocked stories that may have been unblocked",
+          "Verify story is ready for development (acceptance criteria clear)",
+          "Check dependencies are resolved",
+          "Validate sprint commitment"
+        ],
+        "commonMistakes": [
+          "Starting new stories before completing in-progress work",
+          "Ignoring blocked stories that could be unblocked",
+          "Not checking sprint commitment status",
+          "Cherry-picking easy stories over important ones"
+        ],
+        "bestPractices": [
+          "Finish what you start before picking up new work",
+          "Prioritize unblocking others over new work",
+          "Check with PM for priority conflicts",
+          "Consider sprint goals in selection"
+        ],
+        "prerequisites": [
+          "Access to JIRA sprint board",
+          "Understanding of sprint commitment"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "implementation-start",
+      "name": "Start Implementation",
+      "description": "Begin implementing a story with proper setup and TDD flow",
+      "queryType": "implementation",
+      "taskIntent": "implement",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-jira-management",
+        "c-implementation-flow",
+        "c-git-workflows"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "domain_focus.includes('testing')",
+          "contexts": ["c-testing-strategy"],
+          "reason": "Testing focus requires comprehensive testing context"
+        },
+        {
+          "condition": "domain_focus.includes('security')",
+          "contexts": ["c-security-review"],
+          "reason": "Security-sensitive implementation needs security context"
+        }
+      ],
+      "templates": ["t-implementation-checklist"],
+      "agents": ["a-backend-engineer", "a-frontend-developer"],
+      "guidance": {
+        "qualityChecks": [
+          "Story transitioned to In Progress",
+          "Feature branch created with correct naming",
+          "Tests written before implementation (TDD)",
+          "Code passes linting and formatting",
+          "All tests passing locally"
+        ],
+        "commonMistakes": [
+          "Starting code before transitioning story status",
+          "Not creating feature branch from latest main",
+          "Writing tests after implementation",
+          "Committing without running tests"
+        ],
+        "bestPractices": [
+          "Read story requirements thoroughly before coding",
+          "Write failing tests first (TDD)",
+          "Commit frequently with meaningful messages",
+          "Run full test suite before pushing"
+        ],
+        "prerequisites": [
+          "Story requirements understood",
+          "Technical approach validated",
+          "Development environment ready"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "blocker-handle",
+      "name": "Handle Blocker",
+      "description": "Process and escalate blockers effectively",
+      "queryType": "blocker",
+      "taskIntent": "escalate",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-jira-management",
+        "c-sprint-management"
+      ],
+      "conditionalContexts": [],
+      "templates": ["t-blocker-communication"],
+      "agents": ["a-project-manager", "a-backend-architect"],
+      "guidance": {
+        "qualityChecks": [
+          "Blocker clearly documented in JIRA",
+          "Impact assessment completed",
+          "Stakeholders notified",
+          "Alternative approaches explored"
+        ],
+        "commonMistakes": [
+          "Not escalating blockers early enough",
+          "Unclear blocker description",
+          "Not documenting resolution steps",
+          "Waiting too long to ask for help"
+        ],
+        "bestPractices": [
+          "Escalate early, not late",
+          "Document what you've tried",
+          "Propose solutions, not just problems",
+          "Keep stakeholders informed"
+        ],
+        "prerequisites": [],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "deployment-execute",
+      "name": "Execute Deployment",
+      "description": "Deploy changes safely with verification and rollback plan",
+      "queryType": "deployment",
+      "taskIntent": "deploy",
+      "baseContexts": [
+        "c-core-sdlc",
+        "c-git-workflows",
+        "c-infrastructure-as-code"
+      ],
+      "conditionalContexts": [
+        {
+          "condition": "complexity === 'critical'",
+          "contexts": ["c-security-review"],
+          "reason": "Critical deployments need security verification"
+        }
+      ],
+      "templates": ["t-deployment-checklist"],
+      "agents": ["a-deployment-engineer", "a-cloud-architect"],
+      "guidance": {
+        "qualityChecks": [
+          "All CI/CD checks passing",
+          "Rollback plan documented",
+          "Stakeholders notified of deployment window",
+          "Post-deployment verification steps ready"
+        ],
+        "commonMistakes": [
+          "Deploying without rollback plan",
+          "Skipping post-deployment verification",
+          "Deploying during high-traffic periods",
+          "Not notifying stakeholders"
+        ],
+        "bestPractices": [
+          "Deploy during low-traffic windows",
+          "Have rollback ready before deploying",
+          "Monitor key metrics post-deployment",
+          "Document any manual steps required"
+        ],
+        "prerequisites": [
+          "PR merged to main",
+          "All tests passing",
+          "Deployment approval obtained"
+        ],
+        "dependencies": []
+      }
     }
   ],
   "defaultCombination": {

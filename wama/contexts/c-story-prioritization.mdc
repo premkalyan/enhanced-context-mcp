@@ -1,0 +1,200 @@
+description: Story Prioritization Rules - Priority order, JQL patterns, and next story selection logic for determining what to work on next
+globs:
+alwaysApply: false
+
+# Story Prioritization Context
+
+## Priority Order (Highest to Lowest)
+
+### 1. In Progress Stories
+**Priority:** HIGHEST - Always complete what you started
+**JQL:** `status = "In Progress" AND assignee = currentUser() ORDER BY priority DESC`
+**Rationale:**
+- Reduces context switching costs
+- Improves velocity and predictability
+- Prevents WIP (Work in Progress) accumulation
+
+### 2. Blocked Stories Recently Unblocked
+**Priority:** HIGH - Unblock waiting team members
+**JQL:** `status WAS "Blocked" AND status = "To Do" AND updated >= -24h`
+**Rationale:**
+- Other team members may be waiting
+- Prevents pipeline bottlenecks
+- Shows responsiveness to blockers
+
+### 3. Sprint Committed Stories
+**Priority:** HIGH - Honor sprint commitment
+**JQL:** `sprint in openSprints() AND status = "To Do" AND assignee = currentUser() ORDER BY rank ASC`
+**Rationale:**
+- Sprint commitments are team promises
+- Maintains team velocity
+- Supports sprint goals
+
+### 4. Stories with Epic Deadline Approaching
+**Priority:** MEDIUM-HIGH - Meet business deadlines
+**JQL:** `"Epic Link" is not EMPTY AND status = "To Do" ORDER BY priority DESC`
+**Rationale:**
+- Epic deadlines drive business commitments
+- Early warning for at-risk deliverables
+- Enables proactive stakeholder communication
+
+### 5. High Priority Stories (P1/Highest)
+**Priority:** MEDIUM - Business critical work
+**JQL:** `priority in (Highest, High) AND status = "To Do" ORDER BY created ASC`
+**Rationale:**
+- Explicitly marked as important
+- May have external dependencies
+- Usually time-sensitive
+
+### 6. Stories Assigned to User
+**Priority:** MEDIUM - Pre-assigned based on expertise
+**JQL:** `assignee = currentUser() AND status = "To Do" ORDER BY priority DESC, rank ASC`
+**Rationale:**
+- Assignment based on skills/domain
+- Part of capacity planning
+- Already in your context
+
+### 7. Stories with Dependencies Cleared
+**Priority:** LOW - Ready for immediate work
+**JQL:** `status = "To Do" AND issueFunction in linkedIssuesOf("status = Done")`
+**Rationale:**
+- No longer blocked
+- Ready for immediate start
+- Clears pipeline for others
+
+## JQL Query Patterns
+
+### Find Next Story to Work On (Comprehensive)
+```jql
+project = "{PROJECT_KEY}"
+AND status NOT IN (Done, Closed, Resolved)
+AND (
+  status = "In Progress"
+  OR (sprint IN openSprints() AND assignee = currentUser())
+  OR priority IN (Highest, High)
+)
+ORDER BY
+  CASE status WHEN "In Progress" THEN 1 ELSE 2 END,
+  priority DESC,
+  updated DESC
+```
+
+### Find Stories Blocking Others
+```jql
+project = "{PROJECT_KEY}"
+AND issueFunction in linkedIssuesOf("status != Done", "is blocked by")
+AND status = "To Do"
+ORDER BY priority DESC
+```
+
+### Find Overdue Sprint Stories
+```jql
+project = "{PROJECT_KEY}"
+AND sprint in openSprints()
+AND status not in (Done, "In Progress")
+AND dueDate < now()
+ORDER BY dueDate ASC
+```
+
+### Find Unassigned High Priority
+```jql
+project = "{PROJECT_KEY}"
+AND assignee is EMPTY
+AND priority in (Highest, High)
+AND status = "To Do"
+ORDER BY priority DESC, created ASC
+```
+
+## Recommended Next Story Selection Process
+
+### Step 1: Check In-Progress Work
+```
+1. Query: status = "In Progress" AND assignee = currentUser()
+2. If found: Continue that story (DO NOT start new work)
+3. If multiple: Pick highest priority or closest to completion
+```
+
+### Step 2: Review Recently Unblocked
+```
+1. Query: status WAS "Blocked" DURING (-24h, now())
+2. If found: Check if story is ready to resume
+3. Prioritize: Others may be waiting on this work
+```
+
+### Step 3: Check Sprint Board
+```
+1. Query: sprint in openSprints() AND status = "To Do"
+2. Review: Sprint commitment vs. completion rate
+3. Select: Highest ranked uncommitted story
+```
+
+### Step 4: Consider Dependencies
+```
+1. Query: Stories blocking other stories
+2. Priority: Unblocking others > Starting new work
+3. Action: Clear blockers to improve team velocity
+```
+
+### Step 5: Select and Start
+```
+1. Pick story based on priority order above
+2. Transition to "In Progress"
+3. Create feature branch
+4. Add implementation start comment
+```
+
+## MCP Tools for Story Selection
+
+### Search for Stories
+```typescript
+// Find next story candidates
+await mcp_jira_search_issues({
+  jql: 'project = "PROJECT" AND sprint in openSprints() AND status = "To Do" ORDER BY rank ASC',
+  maxResults: 10
+});
+```
+
+### Get Story Details
+```typescript
+// Review story before selecting
+await mcp_jira_get_issue_details({
+  issueKey: "PROJECT-123"
+});
+```
+
+### Start Working on Story
+```typescript
+// Transition to In Progress
+await mcp_jira_transition_issue({
+  issueKey: "PROJECT-123",
+  transitionName: "Start Progress"
+});
+
+// Add start comment
+await mcp_jira_add_comment({
+  issueKey: "PROJECT-123",
+  body: "IMPLEMENTATION STARTED\n\nApproach: [brief description]"
+});
+```
+
+## Anti-Patterns to Avoid
+
+1. **Cherry Picking** - Don't skip hard stories for easy ones
+2. **Parallel Starts** - Don't start multiple stories without finishing
+3. **Priority Blindness** - Don't ignore priority labels
+4. **Sprint Scope Creep** - Don't pull in non-sprint work without discussion
+5. **Blocker Avoidance** - Don't let blocked stories rot
+
+## Decision Tree
+
+```
+Is there an In-Progress story?
+├── YES → Continue that story
+└── NO → Was anything recently unblocked?
+    ├── YES → Pick the unblocked story
+    └── NO → Is there a sprint-committed story?
+        ├── YES → Pick highest ranked sprint story
+        └── NO → Is there a high-priority story?
+            ├── YES → Pick highest priority
+            └── NO → Pick from backlog by rank
+```

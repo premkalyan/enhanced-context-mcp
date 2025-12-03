@@ -6,7 +6,7 @@
 
 export interface AnalyzedIntent {
   query_type: string;
-  task_intent: 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement';
+  task_intent: 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement' | 'select' | 'escalate' | 'deploy';
   scope?: 'epic' | 'story' | 'subtask' | 'portfolio' | 'theme' | 'spike';
   complexity?: 'simple' | 'medium' | 'complex' | 'critical';
   output_format?: 'jira' | 'confluence' | 'github' | 'gitlab';
@@ -81,6 +81,35 @@ export class IntentAnalyzer {
       /\b(deploy|deployment|devops|ci\/cd|pipeline)\b/i,
       /\b(aws|azure|gcp|cloud)\b/i,
     ],
+    'next-story': [
+      /\b(next|what|which)\b.*\b(story|work|task|pick)\b/i,
+      /\bprioritize\b.*\b(story|backlog|sprint)\b/i,
+      /\bwhat\s+should\s+i\s+(work|do|pick)\b/i,
+      /\bpick\s+up\b.*\b(story|task)\b/i,
+      /\bselect\b.*\b(story|task)\b/i,
+      /\bwhat\s+to\s+work\s+on\b/i,
+    ],
+    'implementation': [
+      /\b(start|begin|implement)\b.*\b(story|feature|coding)\b/i,
+      /\bstart\s+(coding|development|implementing)\b/i,
+      /\bbegin\b.*\b(implementation|work)\b/i,
+      /\bhow\s+to\s+(start|begin)\b.*\b(story|feature)\b/i,
+      /\bimplement\s+this\b/i,
+    ],
+    'blocker': [
+      /\b(block|blocked|blocking|impediment)\b/i,
+      /\b(stuck|cannot\s+proceed|waiting)\b/i,
+      /\b(escalate|escalation)\b/i,
+      /\bunblock\b/i,
+      /\bhelp.*blocked\b/i,
+    ],
+    'deployment': [
+      /\b(deploy|deployment|release|ship)\b.*\b(prod|production|staging|environment)\b/i,
+      /\b(push\s+to\s+prod|go\s+live)\b/i,
+      /\b(rollback|roll\s+back)\b/i,
+      /\b(ci\/cd|pipeline|release)\b.*\b(run|trigger|execute)\b/i,
+      /\brelease\s+to\b/i,
+    ],
   };
 
   private readonly intentPatterns: Record<string, RegExp[]> = {
@@ -106,6 +135,21 @@ export class IntentAnalyzer {
     'implement': [
       /\b(implement|code|develop|build)\b/i,
       /\bwrite.*code/i,
+    ],
+    'select': [
+      /\b(select|pick|choose|prioritize)\b/i,
+      /\bwhat.*next\b/i,
+      /\bwhich.*should\b/i,
+    ],
+    'escalate': [
+      /\b(escalate|escalation|blocker|blocked|stuck)\b/i,
+      /\bhelp.*blocked\b/i,
+      /\bcannot\s+proceed\b/i,
+    ],
+    'deploy': [
+      /\b(deploy|release|ship|push)\b/i,
+      /\bgo\s+live\b/i,
+      /\brollback\b/i,
     ],
   };
 
@@ -367,12 +411,12 @@ export class IntentAnalyzer {
     return bestMatch;
   }
 
-  private detectTaskIntent(statement: string): { intent: 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement'; confidence: number } | null {
+  private detectTaskIntent(statement: string): { intent: 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement' | 'select' | 'escalate' | 'deploy'; confidence: number } | null {
     for (const [intent, patterns] of Object.entries(this.intentPatterns)) {
       for (const pattern of patterns) {
         if (pattern.test(statement)) {
           return {
-            intent: intent as 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement',
+            intent: intent as 'create' | 'refine' | 'breakdown' | 'review' | 'plan' | 'implement' | 'select' | 'escalate' | 'deploy',
             confidence: 0.8,
           };
         }
@@ -459,7 +503,10 @@ export class IntentAnalyzer {
     if (intent === 'breakdown') return 'story-breakdown';
     if (intent === 'review') return 'pr-review';
     if (intent === 'plan') return 'architecture';
-    if (intent === 'implement') return 'documentation';
+    if (intent === 'implement') return 'implementation';
+    if (intent === 'select') return 'next-story';
+    if (intent === 'escalate') return 'blocker';
+    if (intent === 'deploy') return 'deployment';
 
     // Default fallback
     return 'story';
