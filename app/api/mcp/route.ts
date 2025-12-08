@@ -29,9 +29,9 @@ const MCP_ECOSYSTEM = {
     vercel_deployed: [
       {
         name: "Enhanced Context MCP",
-        url: "https://project-registry-henna.vercel.app",
-        api_endpoint: "https://project-registry-henna.vercel.app/api/mcp",
-        docs: "https://project-registry-henna.vercel.app/docs",
+        url: "https://enhanced-context-mcp.vercel.app",
+        api_endpoint: "https://enhanced-context-mcp.vercel.app/api/mcp",
+        docs: "https://enhanced-context-mcp.vercel.app/docs",
         description: "Context loading, VISHKAR agent management, SDLC guidance, and MCP ecosystem information",
         tools: ["load_enhanced_context", "list_vishkar_agents", "load_vishkar_agent", "validate_vishkar_agent_profile", "refresh_agent_cache", "update_agent", "get_mcp_ecosystem_guide"],
         auth_required: true,
@@ -183,7 +183,7 @@ const MCP_ECOSYSTEM = {
     },
     calling_enhanced_context: {
       description: "Load context for a task using natural language",
-      endpoint: "POST https://project-registry-henna.vercel.app/api/mcp",
+      endpoint: "POST https://enhanced-context-mcp.vercel.app/api/mcp",
       headers: {
         "Content-Type": "application/json",
         "X-API-Key": "pk_your_api_key_here"
@@ -198,7 +198,7 @@ const MCP_ECOSYSTEM = {
   },
   quick_reference: {
     vercel_mcps: {
-      "Enhanced Context": "https://project-registry-henna.vercel.app/api/mcp",
+      "Enhanced Context": "https://enhanced-context-mcp.vercel.app/api/mcp",
       "JIRA": "https://jira-mcp-pi.vercel.app/api/mcp",
       "Confluence": "https://confluence-mcp-six.vercel.app/api/mcp",
       "Storycrafter": "https://storycrafter-mcp.vercel.app/api/mcp"
@@ -211,7 +211,7 @@ const MCP_ECOSYSTEM = {
     },
     documentation: {
       "Project Registry Dashboard": "https://project-registry-henna.vercel.app/dashboard",
-      "Enhanced Context Docs": "https://project-registry-henna.vercel.app/docs",
+      "Enhanced Context Docs": "https://enhanced-context-mcp.vercel.app/docs",
       "JIRA MCP Docs": "https://jira-mcp-pi.vercel.app",
       "Confluence MCP Docs": "https://confluence-mcp-six.vercel.app/api/mcp"
     }
