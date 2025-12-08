@@ -28,6 +28,21 @@ const MCP_ECOSYSTEM = {
   mcps: {
     vercel_deployed: [
       {
+        name: "Project Registry",
+        url: "https://project-registry-henna.vercel.app",
+        api_endpoint: "https://project-registry-henna.vercel.app/api/projects/register",
+        docs: "https://project-registry-henna.vercel.app/docs",
+        dashboard: "https://project-registry-henna.vercel.app/dashboard",
+        description: "Central credential management - register projects, store Jira/Confluence/GitHub credentials securely, get API keys for MCP authentication",
+        endpoints: {
+          register: "POST /api/projects/register",
+          get_project: "GET /api/projects/{apiKey}",
+          health: "GET /api/health"
+        },
+        auth_required: false,
+        notes: "This is where you register your project to get API keys for other MCPs"
+      },
+      {
         name: "Enhanced Context MCP",
         url: "https://enhanced-context-mcp.vercel.app",
         api_endpoint: "https://enhanced-context-mcp.vercel.app/api/mcp",
@@ -56,16 +71,6 @@ const MCP_ECOSYSTEM = {
         tools: ["get_spaces", "get_space", "get_content_by_id", "get_content_by_space_and_title", "search", "create_page", "update_page", "get_page_attachments", "get_page_children", "add_page_labels", "upload_document", "update_document", "delete_document", "list_documents", "create_folder", "get_folder_contents", "move_page_to_folder", "create_page_template", "get_page_templates", "apply_page_template", "update_page_template", "get_pages_by_label", "get_page_history", "insert_macro", "update_macro", "get_page_macros", "link_page_to_jira_issue", "insert_jira_macro", "get_space_permissions", "embed_existing_attachment", "upload_and_embed_document", "upload_and_embed_attachment"],
         auth_required: true,
         auth_type: "Bearer token (from Project Registry)"
-      },
-      {
-        name: "Storycrafter MCP",
-        url: "https://storycrafter-mcp.vercel.app",
-        api_endpoint: "https://storycrafter-mcp.vercel.app/api/mcp",
-        docs: "https://storycrafter-mcp.vercel.app",
-        description: "AI-powered user story and epic generation with INVEST criteria validation",
-        tools: ["generate_story", "generate_epic", "validate_story", "breakdown_epic"],
-        auth_required: true,
-        auth_type: "X-API-Key header"
       }
     ],
     docker_local: [
@@ -76,42 +81,16 @@ const MCP_ECOSYSTEM = {
         api_endpoint: "http://localhost:8188/mcp",
         info_endpoint: "http://localhost:8188/info",
         health_endpoint: "http://localhost:8188/health",
-        description: "AI-powered Pull Request analysis - reviews, descriptions, code improvements, security scanning",
+        description: "AI-powered Pull Request analysis - reviews, descriptions, code improvements, security scanning. Uses GPT-4/Claude for intelligent code review.",
         tools: ["pr_review", "pr_describe", "pr_improve", "pr_ask", "pr_analyze", "pr_complete_workflow", "pr_review_branch", "codeql_security_scan", "remediate_security_findings", "configure_codeql_rules"],
         auth_required: true,
         auth_type: "Environment variables (GITHUB_TOKEN, OPENAI_API_KEY, ANTHROPIC_API_KEY)",
-        docker_compose: "docker-compose up -d pr-agent-mcp",
-        notes: "Connects to local PR-Agent Docker service on port 3000"
-      },
-      {
-        name: "GitHub MCP",
-        port: 8185,
-        url: "http://localhost:8185",
-        api_endpoint: "http://localhost:8185/mcp",
-        description: "GitHub operations - repos, PRs, issues, branches, workflows",
-        tools: ["list_repos", "get_repo", "create_repo", "list_prs", "create_pr", "merge_pr", "list_issues", "create_issue", "list_branches", "create_branch", "get_workflows", "trigger_workflow"],
-        auth_required: true,
-        auth_type: "GITHUB_TOKEN environment variable"
-      },
-      {
-        name: "Slack MCP",
-        port: 8186,
-        url: "http://localhost:8186",
-        api_endpoint: "http://localhost:8186/mcp",
-        description: "Slack integration - messages, channels, users, reactions",
-        tools: ["send_message", "list_channels", "get_channel_history", "search_messages", "add_reaction", "upload_file"],
-        auth_required: true,
-        auth_type: "SLACK_BOT_TOKEN environment variable"
-      },
-      {
-        name: "Filesystem MCP",
-        port: 8187,
-        url: "http://localhost:8187",
-        api_endpoint: "http://localhost:8187/mcp",
-        description: "Safe filesystem operations for reading/writing project files",
-        tools: ["read_file", "write_file", "list_directory", "create_directory", "delete_file", "move_file", "search_files"],
-        auth_required: false,
-        notes: "Restricted to allowed directories only"
+        setup: {
+          start: "cd /Users/premkalyan/code/mcp/pr-agent-mcp && docker-compose up -d",
+          stop: "docker-compose down",
+          logs: "docker-compose logs -f"
+        },
+        notes: "Run locally in Docker. Requires GitHub token and AI API keys configured in environment."
       }
     ]
   },
@@ -198,19 +177,17 @@ const MCP_ECOSYSTEM = {
   },
   quick_reference: {
     vercel_mcps: {
+      "Project Registry": "https://project-registry-henna.vercel.app/api/projects/register",
       "Enhanced Context": "https://enhanced-context-mcp.vercel.app/api/mcp",
       "JIRA": "https://jira-mcp-pi.vercel.app/api/mcp",
-      "Confluence": "https://confluence-mcp-six.vercel.app/api/mcp",
-      "Storycrafter": "https://storycrafter-mcp.vercel.app/api/mcp"
+      "Confluence": "https://confluence-mcp-six.vercel.app/api/mcp"
     },
     docker_mcps: {
-      "PR-Agent": "http://localhost:8188/mcp",
-      "GitHub": "http://localhost:8185/mcp",
-      "Slack": "http://localhost:8186/mcp",
-      "Filesystem": "http://localhost:8187/mcp"
+      "PR-Agent": "http://localhost:8188/mcp"
     },
     documentation: {
       "Project Registry Dashboard": "https://project-registry-henna.vercel.app/dashboard",
+      "Project Registry Docs": "https://project-registry-henna.vercel.app/docs",
       "Enhanced Context Docs": "https://enhanced-context-mcp.vercel.app/docs",
       "JIRA MCP Docs": "https://jira-mcp-pi.vercel.app",
       "Confluence MCP Docs": "https://confluence-mcp-six.vercel.app/api/mcp"
