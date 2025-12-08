@@ -7,8 +7,258 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ServiceFactory } from '../../../lib/services/ServiceFactory';
 import ConfigLoader from '../../../lib/config/configLoader';
 
+// MCP Ecosystem Data - Comprehensive guide to all MCPs
+const MCP_ECOSYSTEM = {
+  overview: {
+    description: "VISHKAR MCP Ecosystem - A collection of Model Context Protocol servers that provide AI assistants with secure access to enterprise tools and data.",
+    architecture: {
+      project_registry: {
+        url: "https://project-registry-henna.vercel.app",
+        purpose: "Central credential management and API key distribution",
+        docs: "https://project-registry-henna.vercel.app/dashboard"
+      },
+      authentication_flow: [
+        "1. Register your project at Project Registry with your tool credentials (Jira, Confluence, GitHub, etc.)",
+        "2. Receive a unique API key (pk_xxx...)",
+        "3. Use this API key as Bearer token when calling any MCP service",
+        "4. MCP services fetch your credentials from registry automatically"
+      ]
+    }
+  },
+  mcps: {
+    vercel_deployed: [
+      {
+        name: "Enhanced Context MCP",
+        url: "https://project-registry-henna.vercel.app",
+        api_endpoint: "https://project-registry-henna.vercel.app/api/mcp",
+        docs: "https://project-registry-henna.vercel.app/docs",
+        description: "Context loading, VISHKAR agent management, SDLC guidance, and MCP ecosystem information",
+        tools: ["load_enhanced_context", "list_vishkar_agents", "load_vishkar_agent", "validate_vishkar_agent_profile", "refresh_agent_cache", "update_agent", "get_mcp_ecosystem_guide"],
+        auth_required: true,
+        auth_type: "X-API-Key header"
+      },
+      {
+        name: "JIRA MCP",
+        url: "https://jira-mcp-pi.vercel.app",
+        api_endpoint: "https://jira-mcp-pi.vercel.app/api/mcp",
+        docs: "https://jira-mcp-pi.vercel.app",
+        description: "Comprehensive Jira integration - issues, boards, sprints, time tracking, JQL queries",
+        tools: ["search_issues", "get_issue", "create_issue", "update_issue", "add_comment", "get_boards", "get_sprints", "log_work", "transition_issue", "link_issues", "get_transitions", "assign_issue", "get_board_configuration", "get_sprint_issues", "create_sprint", "move_issues_to_sprint", "get_issue_worklogs", "get_issue_comments", "delete_comment", "add_watcher", "get_watchers", "remove_watcher", "get_issue_changelog", "get_priorities", "get_statuses", "link_story_to_epic"],
+        auth_required: true,
+        auth_type: "Bearer token (from Project Registry)"
+      },
+      {
+        name: "Confluence MCP",
+        url: "https://confluence-mcp-six.vercel.app",
+        api_endpoint: "https://confluence-mcp-six.vercel.app/api/mcp",
+        docs: "https://confluence-mcp-six.vercel.app/api/mcp",
+        description: "Confluence documentation management - pages, spaces, templates, attachments, macros",
+        tools: ["get_spaces", "get_space", "get_content_by_id", "get_content_by_space_and_title", "search", "create_page", "update_page", "get_page_attachments", "get_page_children", "add_page_labels", "upload_document", "update_document", "delete_document", "list_documents", "create_folder", "get_folder_contents", "move_page_to_folder", "create_page_template", "get_page_templates", "apply_page_template", "update_page_template", "get_pages_by_label", "get_page_history", "insert_macro", "update_macro", "get_page_macros", "link_page_to_jira_issue", "insert_jira_macro", "get_space_permissions", "embed_existing_attachment", "upload_and_embed_document", "upload_and_embed_attachment"],
+        auth_required: true,
+        auth_type: "Bearer token (from Project Registry)"
+      },
+      {
+        name: "Storycrafter MCP",
+        url: "https://storycrafter-mcp.vercel.app",
+        api_endpoint: "https://storycrafter-mcp.vercel.app/api/mcp",
+        docs: "https://storycrafter-mcp.vercel.app",
+        description: "AI-powered user story and epic generation with INVEST criteria validation",
+        tools: ["generate_story", "generate_epic", "validate_story", "breakdown_epic"],
+        auth_required: true,
+        auth_type: "X-API-Key header"
+      }
+    ],
+    docker_local: [
+      {
+        name: "PR-Agent MCP",
+        port: 8188,
+        url: "http://localhost:8188",
+        api_endpoint: "http://localhost:8188/mcp",
+        info_endpoint: "http://localhost:8188/info",
+        health_endpoint: "http://localhost:8188/health",
+        description: "AI-powered Pull Request analysis - reviews, descriptions, code improvements, security scanning",
+        tools: ["pr_review", "pr_describe", "pr_improve", "pr_ask", "pr_analyze", "pr_complete_workflow", "pr_review_branch", "codeql_security_scan", "remediate_security_findings", "configure_codeql_rules"],
+        auth_required: true,
+        auth_type: "Environment variables (GITHUB_TOKEN, OPENAI_API_KEY, ANTHROPIC_API_KEY)",
+        docker_compose: "docker-compose up -d pr-agent-mcp",
+        notes: "Connects to local PR-Agent Docker service on port 3000"
+      },
+      {
+        name: "GitHub MCP",
+        port: 8185,
+        url: "http://localhost:8185",
+        api_endpoint: "http://localhost:8185/mcp",
+        description: "GitHub operations - repos, PRs, issues, branches, workflows",
+        tools: ["list_repos", "get_repo", "create_repo", "list_prs", "create_pr", "merge_pr", "list_issues", "create_issue", "list_branches", "create_branch", "get_workflows", "trigger_workflow"],
+        auth_required: true,
+        auth_type: "GITHUB_TOKEN environment variable"
+      },
+      {
+        name: "Slack MCP",
+        port: 8186,
+        url: "http://localhost:8186",
+        api_endpoint: "http://localhost:8186/mcp",
+        description: "Slack integration - messages, channels, users, reactions",
+        tools: ["send_message", "list_channels", "get_channel_history", "search_messages", "add_reaction", "upload_file"],
+        auth_required: true,
+        auth_type: "SLACK_BOT_TOKEN environment variable"
+      },
+      {
+        name: "Filesystem MCP",
+        port: 8187,
+        url: "http://localhost:8187",
+        api_endpoint: "http://localhost:8187/mcp",
+        description: "Safe filesystem operations for reading/writing project files",
+        tools: ["read_file", "write_file", "list_directory", "create_directory", "delete_file", "move_file", "search_files"],
+        auth_required: false,
+        notes: "Restricted to allowed directories only"
+      }
+    ]
+  },
+  usage_examples: {
+    project_registration: {
+      description: "Register your project to get an API key",
+      endpoint: "POST https://project-registry-henna.vercel.app/api/projects/register",
+      request: {
+        projectId: "my-project",
+        projectName: "My Project",
+        configs: {
+          jira: {
+            url: "https://yourcompany.atlassian.net",
+            email: "your-email@company.com",
+            api_token: "your-jira-api-token"
+          },
+          confluence: {
+            url: "https://yourcompany.atlassian.net/wiki",
+            email: "your-email@company.com",
+            api_token: "your-confluence-api-token",
+            spaceKey: "MYSPACE"
+          }
+        }
+      },
+      response: {
+        success: true,
+        apiKey: "pk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        message: "Project registered successfully"
+      }
+    },
+    calling_jira_mcp: {
+      description: "Search for issues using JIRA MCP",
+      endpoint: "POST https://jira-mcp-pi.vercel.app/api/mcp",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer pk_your_api_key_here"
+      },
+      request: {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "search_issues",
+          arguments: {
+            jql: "project = MYPROJECT AND status = 'In Progress'",
+            maxResults: 10
+          }
+        }
+      }
+    },
+    calling_confluence_mcp: {
+      description: "Get page content from Confluence",
+      endpoint: "POST https://confluence-mcp-six.vercel.app/api/mcp",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer pk_your_api_key_here"
+      },
+      request: {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "get_content_by_id",
+          arguments: {
+            id: "123456789"
+          }
+        }
+      }
+    },
+    calling_enhanced_context: {
+      description: "Load context for a task using natural language",
+      endpoint: "POST https://project-registry-henna.vercel.app/api/mcp",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": "pk_your_api_key_here"
+      },
+      request: {
+        tool: "load_enhanced_context",
+        arguments: {
+          task_statement: "I want to create architecture diagrams for our payment processing system"
+        }
+      }
+    }
+  },
+  quick_reference: {
+    vercel_mcps: {
+      "Enhanced Context": "https://project-registry-henna.vercel.app/api/mcp",
+      "JIRA": "https://jira-mcp-pi.vercel.app/api/mcp",
+      "Confluence": "https://confluence-mcp-six.vercel.app/api/mcp",
+      "Storycrafter": "https://storycrafter-mcp.vercel.app/api/mcp"
+    },
+    docker_mcps: {
+      "PR-Agent": "http://localhost:8188/mcp",
+      "GitHub": "http://localhost:8185/mcp",
+      "Slack": "http://localhost:8186/mcp",
+      "Filesystem": "http://localhost:8187/mcp"
+    },
+    documentation: {
+      "Project Registry Dashboard": "https://project-registry-henna.vercel.app/dashboard",
+      "Enhanced Context Docs": "https://project-registry-henna.vercel.app/docs",
+      "JIRA MCP Docs": "https://jira-mcp-pi.vercel.app",
+      "Confluence MCP Docs": "https://confluence-mcp-six.vercel.app/api/mcp"
+    }
+  },
+  troubleshooting: {
+    common_issues: [
+      {
+        issue: "401 Unauthorized",
+        solution: "Ensure you have a valid API key from Project Registry and include it as Bearer token or X-API-Key header"
+      },
+      {
+        issue: "Confluence/JIRA not configured",
+        solution: "Register your project at Project Registry with the tool credentials before calling the MCP"
+      },
+      {
+        issue: "Docker MCP not responding",
+        solution: "Ensure Docker containers are running: docker-compose ps, then docker-compose up -d <service-name>"
+      },
+      {
+        issue: "Body content not returned from Confluence",
+        solution: "Use get_content_by_id - it now returns body.storage by default"
+      }
+    ]
+  }
+};
+
 // Tool definitions
 const TOOLS = [
+  {
+    name: 'get_mcp_ecosystem_guide',
+    description: 'Get comprehensive guide about all MCPs in the ecosystem - what they are, where they are deployed (Vercel/Docker), how to use them, authentication flow, documentation links, and usage examples. Perfect for understanding the MCP landscape.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['overview', 'vercel_mcps', 'docker_mcps', 'all_mcps', 'authentication', 'usage_examples', 'quick_reference', 'troubleshooting', 'full'],
+          description: 'Which section to return: overview (architecture), vercel_mcps (cloud-deployed), docker_mcps (local), all_mcps (both), authentication (how to get API keys), usage_examples (code samples), quick_reference (URLs), troubleshooting (common issues), full (everything)'
+        },
+        mcp_name: {
+          type: 'string',
+          description: 'Get details about a specific MCP by name (e.g., "JIRA MCP", "Confluence MCP", "PR-Agent MCP")'
+        }
+      },
+      required: []
+    }
+  },
   {
     name: 'load_enhanced_context',
     description: 'Load global WAMA contexts, templates, and project-specific rules for enhanced MCP processing. Supports TWO modes: (1) Natural Language: Just provide task_statement describing what you want to do, and the AI will intelligently infer contexts, templates, and guidance. (2) Structured: Provide explicit query_type, task_intent, scope, etc. Includes 13-step SDLC guidance and task-specific quality checks.',
@@ -180,6 +430,93 @@ const TOOLS = [
   }
 ];
 
+// Handler for MCP Ecosystem Guide
+function handleMcpEcosystemGuide(args: { section?: string; mcp_name?: string }) {
+  const { section = 'full', mcp_name } = args;
+
+  // If specific MCP requested, find and return it
+  if (mcp_name) {
+    const allMcps = [...MCP_ECOSYSTEM.mcps.vercel_deployed, ...MCP_ECOSYSTEM.mcps.docker_local];
+    const found = allMcps.find(mcp =>
+      mcp.name.toLowerCase().includes(mcp_name.toLowerCase())
+    );
+    if (found) {
+      return {
+        mcp: found,
+        usage_tip: found.auth_required
+          ? `This MCP requires authentication. ${found.auth_type}`
+          : "This MCP does not require authentication."
+      };
+    }
+    return { error: `MCP "${mcp_name}" not found. Available MCPs: ${allMcps.map(m => m.name).join(', ')}` };
+  }
+
+  // Return based on section
+  switch (section) {
+    case 'overview':
+      return {
+        ...MCP_ECOSYSTEM.overview,
+        total_mcps: MCP_ECOSYSTEM.mcps.vercel_deployed.length + MCP_ECOSYSTEM.mcps.docker_local.length,
+        vercel_count: MCP_ECOSYSTEM.mcps.vercel_deployed.length,
+        docker_count: MCP_ECOSYSTEM.mcps.docker_local.length
+      };
+
+    case 'vercel_mcps':
+      return {
+        deployment: 'Vercel (Cloud)',
+        description: 'These MCPs are deployed on Vercel and accessible from anywhere via HTTPS',
+        mcps: MCP_ECOSYSTEM.mcps.vercel_deployed
+      };
+
+    case 'docker_mcps':
+      return {
+        deployment: 'Docker (Local)',
+        description: 'These MCPs run locally in Docker containers. Start them with docker-compose.',
+        mcps: MCP_ECOSYSTEM.mcps.docker_local
+      };
+
+    case 'all_mcps':
+      return {
+        vercel_deployed: MCP_ECOSYSTEM.mcps.vercel_deployed,
+        docker_local: MCP_ECOSYSTEM.mcps.docker_local,
+        total: MCP_ECOSYSTEM.mcps.vercel_deployed.length + MCP_ECOSYSTEM.mcps.docker_local.length
+      };
+
+    case 'authentication':
+      return {
+        flow: MCP_ECOSYSTEM.overview.architecture.authentication_flow,
+        project_registry: MCP_ECOSYSTEM.overview.architecture.project_registry,
+        registration_example: MCP_ECOSYSTEM.usage_examples.project_registration
+      };
+
+    case 'usage_examples':
+      return MCP_ECOSYSTEM.usage_examples;
+
+    case 'quick_reference':
+      return MCP_ECOSYSTEM.quick_reference;
+
+    case 'troubleshooting':
+      return MCP_ECOSYSTEM.troubleshooting;
+
+    case 'full':
+    default:
+      return {
+        ...MCP_ECOSYSTEM,
+        summary: {
+          total_mcps: MCP_ECOSYSTEM.mcps.vercel_deployed.length + MCP_ECOSYSTEM.mcps.docker_local.length,
+          vercel_deployed: MCP_ECOSYSTEM.mcps.vercel_deployed.map(m => m.name),
+          docker_local: MCP_ECOSYSTEM.mcps.docker_local.map(m => m.name),
+          getting_started: [
+            "1. Go to Project Registry: https://project-registry-henna.vercel.app/dashboard",
+            "2. Register your project with tool credentials (Jira, Confluence, etc.)",
+            "3. Copy your API key (pk_xxx...)",
+            "4. Use the API key as Bearer token when calling MCPs"
+          ]
+        }
+      };
+  }
+}
+
 // Simple authentication check
 function isAuthenticated(request: NextRequest): boolean {
   const apiKey = request.headers.get('x-api-key');
@@ -220,6 +557,10 @@ export async function POST(request: NextRequest) {
     let result;
 
     switch (tool) {
+      case 'get_mcp_ecosystem_guide':
+        result = handleMcpEcosystemGuide(args || {});
+        break;
+
       case 'load_enhanced_context':
         result = await enhancedContextService.loadEnhancedContext(args || {});
         break;
