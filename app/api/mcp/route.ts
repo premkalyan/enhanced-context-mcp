@@ -32,12 +32,14 @@ const MCP_ECOSYSTEM = {
         url: "https://project-registry-henna.vercel.app",
         api_endpoint: "https://project-registry-henna.vercel.app/api/projects/register",
         docs: "https://project-registry-henna.vercel.app/docs",
+        howto: "https://project-registry-henna.vercel.app/api/howto",
         dashboard: "https://project-registry-henna.vercel.app/dashboard",
         description: "Central credential management - register projects, store Jira/Confluence/GitHub credentials securely, get API keys for MCP authentication",
         endpoints: {
           register: "POST /api/projects/register",
           get_project: "GET /api/projects/{apiKey}",
-          health: "GET /api/health"
+          health: "GET /api/health",
+          howto: "GET /api/howto"
         },
         auth_required: false,
         notes: "This is where you register your project to get API keys for other MCPs"
@@ -47,6 +49,7 @@ const MCP_ECOSYSTEM = {
         url: "https://enhanced-context-mcp.vercel.app",
         api_endpoint: "https://enhanced-context-mcp.vercel.app/api/mcp",
         docs: "https://enhanced-context-mcp.vercel.app/docs",
+        howto: "https://enhanced-context-mcp.vercel.app/api/howto",
         description: "Context loading, VISHKAR agent management, SDLC guidance, and MCP ecosystem information",
         tools: ["load_enhanced_context", "list_vishkar_agents", "load_vishkar_agent", "validate_vishkar_agent_profile", "refresh_agent_cache", "update_agent", "get_mcp_ecosystem_guide"],
         auth_required: true,
@@ -57,8 +60,10 @@ const MCP_ECOSYSTEM = {
         url: "https://jira-mcp-pi.vercel.app",
         api_endpoint: "https://jira-mcp-pi.vercel.app/api/mcp",
         docs: "https://jira-mcp-pi.vercel.app",
-        description: "Comprehensive Jira integration - issues, boards, sprints, time tracking, JQL queries",
+        howto: "https://jira-mcp-pi.vercel.app/api/howto",
+        description: "Comprehensive Jira integration - issues, boards, sprints, time tracking, JQL queries. Supports Markdown-to-ADF auto-conversion.",
         tools: ["search_issues", "get_issue", "create_issue", "update_issue", "add_comment", "get_boards", "get_sprints", "log_work", "transition_issue", "link_issues", "get_transitions", "assign_issue", "get_board_configuration", "get_sprint_issues", "create_sprint", "move_issues_to_sprint", "get_issue_worklogs", "get_issue_comments", "delete_comment", "add_watcher", "get_watchers", "remove_watcher", "get_issue_changelog", "get_priorities", "get_statuses", "link_story_to_epic"],
+        rich_text_format: "ADF (Atlassian Document Format) - Markdown auto-converted",
         auth_required: true,
         auth_type: "Bearer token (from Project Registry)"
       },
@@ -67,10 +72,24 @@ const MCP_ECOSYSTEM = {
         url: "https://confluence-mcp-six.vercel.app",
         api_endpoint: "https://confluence-mcp-six.vercel.app/api/mcp",
         docs: "https://confluence-mcp-six.vercel.app/api/mcp",
+        howto: "https://confluence-mcp-six.vercel.app/api/howto",
         description: "Confluence documentation management - pages, spaces, templates, attachments, macros",
         tools: ["get_spaces", "get_space", "get_content_by_id", "get_content_by_space_and_title", "search", "create_page", "update_page", "get_page_attachments", "get_page_children", "add_page_labels", "upload_document", "update_document", "delete_document", "list_documents", "create_folder", "get_folder_contents", "move_page_to_folder", "create_page_template", "get_page_templates", "apply_page_template", "update_page_template", "get_pages_by_label", "get_page_history", "insert_macro", "update_macro", "get_page_macros", "link_page_to_jira_issue", "insert_jira_macro", "get_space_permissions", "embed_existing_attachment", "upload_and_embed_document", "upload_and_embed_attachment"],
+        rich_text_format: "XHTML storage format (NOT Markdown)",
         auth_required: true,
         auth_type: "Bearer token (from Project Registry)"
+      },
+      {
+        name: "Story Crafter MCP",
+        url: "https://storycrafter-mcp.vercel.app",
+        api_endpoint: "https://storycrafter-mcp.vercel.app/api/mcp",
+        docs: "https://storycrafter-mcp.vercel.app",
+        howto: "https://storycrafter-mcp.vercel.app/api/howto",
+        description: "AI-powered backlog generator - transforms VISHKAR consensus into structured Epics and User Stories with acceptance criteria and technical tasks",
+        tools: ["generate_epics", "generate_stories", "regenerate_epic", "regenerate_story"],
+        auth_required: true,
+        auth_type: "X-API-Key header (from Project Registry)",
+        required_config: "configs.ai_provider (OpenAI or Anthropic API key)"
       }
     ],
     docker_local: [
