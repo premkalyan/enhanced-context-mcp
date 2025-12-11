@@ -1,0 +1,650 @@
+{
+  "name": "VISHKAR 13-Step Autonomous SDLC",
+  "version": "1.0.0",
+  "description": "Automated development lifecycle from story selection to completion with quality gates and human approval points",
+
+  "overview": {
+    "purpose": "Enable autonomous agents to execute the full software development lifecycle with minimal human intervention",
+    "philosophy": "Automation first, human oversight at critical gates",
+    "quality_thresholds": {
+      "minimum_quality_score": 7,
+      "test_pass_rate": 90,
+      "max_retries": 3,
+      "escalation_trigger": "After 3 failed retries, escalate to human"
+    }
+  },
+
+  "mcp_servers": {
+    "vercel_hosted": [
+      {
+        "name": "Project Registry",
+        "url": "https://project-registry-henna.vercel.app",
+        "howto": "https://project-registry-henna.vercel.app/api/howto",
+        "purpose": "API key management and credential storage"
+      },
+      {
+        "name": "JIRA MCP",
+        "url": "https://jira-mcp-pi.vercel.app",
+        "howto": "https://jira-mcp-pi.vercel.app/api/howto",
+        "purpose": "Issue tracking, sprint management, story lifecycle",
+        "used_in_steps": [1, 13]
+      },
+      {
+        "name": "Confluence MCP",
+        "url": "https://confluence-mcp-six.vercel.app",
+        "howto": "https://confluence-mcp-six.vercel.app/api/howto",
+        "purpose": "Documentation, architecture diagrams, test reports",
+        "used_in_steps": [12]
+      },
+      {
+        "name": "Enhanced Context MCP",
+        "url": "https://enhanced-context-mcp.vercel.app",
+        "howto": "https://enhanced-context-mcp.vercel.app/api/howto",
+        "purpose": "Context loading, agent discovery, SDLC guidance",
+        "used_in_steps": "All steps"
+      },
+      {
+        "name": "Story Crafter MCP",
+        "url": "https://storycrafter-mcp.vercel.app",
+        "howto": "https://storycrafter-mcp.vercel.app/api/howto",
+        "purpose": "Backlog generation from VISHKAR consensus",
+        "used_in_steps": [1]
+      }
+    ],
+    "docker_local": [
+      {
+        "name": "PR-Agent MCP",
+        "url": "http://localhost:8188",
+        "port": 8188,
+        "purpose": "AI-powered PR review, code analysis, security scanning",
+        "used_in_steps": [8],
+        "setup": {
+          "start": "cd /path/to/pr-agent-mcp && docker-compose up -d",
+          "stop": "docker-compose down",
+          "health": "http://localhost:8188/health"
+        },
+        "note": "Code review MCP runs on local Docker for security - keeps code analysis local"
+      }
+    ]
+  },
+
+  "agent_mapping": {
+    "pm_agent": {
+      "wama_agent_ids": ["a-project-manager"],
+      "owned_steps": [1, 13],
+      "responsibilities": ["Story selection", "Story completion", "Sprint management"]
+    },
+    "dev_agent": {
+      "wama_agent_ids": ["a-backend-engineer", "a-frontend-developer", "a-fullstack-developer"],
+      "owned_steps": [2, 3, 7, 9],
+      "responsibilities": ["Implementation", "Manual verification", "PR creation", "Feedback implementation"]
+    },
+    "qa_agent": {
+      "wama_agent_ids": ["a-test-automator", "a-qa-engineer"],
+      "owned_steps": [4, 5, 6],
+      "responsibilities": ["Test case creation", "Test implementation", "Test execution"]
+    },
+    "review_agent": {
+      "wama_agent_ids": ["a-code-reviewer", "a-pr-orchestrator"],
+      "owned_steps": [8],
+      "responsibilities": ["3-phase PR review", "Security analysis", "Performance analysis"]
+    },
+    "doc_agent": {
+      "wama_agent_ids": ["a-documentation-specialist"],
+      "owned_steps": [12],
+      "responsibilities": ["Documentation updates", "Architecture diagrams", "Test report linking"]
+    },
+    "coordinator": {
+      "wama_agent_ids": ["a-architect-review"],
+      "owned_steps": "All (monitoring)",
+      "responsibilities": ["Cross-step monitoring", "Escalation handling", "Quality oversight"]
+    }
+  },
+
+  "steps": [
+    {
+      "step": 1,
+      "name": "Story Selection",
+      "short_name": "Story → In Progress",
+      "owner_agent": "PM Agent",
+      "wama_agents": ["a-project-manager"],
+      "automated": true,
+      "gate": null,
+      "description": "Select ready story from backlog and move to In Progress",
+      "entry_criteria": [
+        "Stories exist in Ready column",
+        "No blockers on candidate stories",
+        "Sprint has capacity"
+      ],
+      "exit_criteria": [
+        "Story moved to In Progress",
+        "Story has acceptance criteria",
+        "Dependencies are resolved",
+        "Estimation exists"
+      ],
+      "activities": [
+        "Query JIRA for ready stories",
+        "Check acceptance criteria completeness",
+        "Verify dependencies resolved",
+        "Verify estimation exists",
+        "Transition story to In Progress"
+      ],
+      "mcp_tools": {
+        "jira_mcp": ["search_issues", "get_issue_details", "transition_issue", "add_comment"],
+        "enhanced_context_mcp": ["load_enhanced_context", "list_vishkar_agents"]
+      },
+      "handoff": {
+        "to": "Dev Agent",
+        "payload": ["storyKey", "acceptanceCriteria", "technicalTasks", "estimatedPoints"]
+      }
+    },
+    {
+      "step": 2,
+      "name": "Implementation",
+      "short_name": "Implementation",
+      "owner_agent": "Dev Agent",
+      "wama_agents": ["a-backend-engineer", "a-frontend-developer"],
+      "automated": true,
+      "gate": null,
+      "description": "Implement the feature following coding standards",
+      "entry_criteria": [
+        "Story in In Progress",
+        "Acceptance criteria understood",
+        "Technical approach decided"
+      ],
+      "exit_criteria": [
+        "Code implemented",
+        "Linting passes",
+        "TypeScript checks pass",
+        "Self-quality score >= 7/10"
+      ],
+      "activities": [
+        "Create feature branch",
+        "Write/update code",
+        "Run linting and type checks",
+        "Self-evaluate code quality",
+        "Document key decisions"
+      ],
+      "quality_check": {
+        "type": "self_evaluation",
+        "minimum_score": 7,
+        "criteria": ["Code clarity", "Error handling", "Test coverage intent", "Documentation"]
+      },
+      "mcp_tools": {
+        "enhanced_context_mcp": ["load_enhanced_context"],
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "Dev Agent (Step 3)",
+        "payload": ["branchName", "filesChanged", "qualityScore"]
+      }
+    },
+    {
+      "step": 3,
+      "name": "Manual Verification",
+      "short_name": "Manual Verification",
+      "owner_agent": "Dev Agent",
+      "wama_agents": ["a-backend-engineer", "a-frontend-developer"],
+      "automated": true,
+      "gate": "Optional",
+      "description": "Verify the implementation works in local environment",
+      "entry_criteria": [
+        "Implementation complete",
+        "Quality score >= 7/10"
+      ],
+      "exit_criteria": [
+        "Application starts without errors",
+        "Happy path works",
+        "No console errors",
+        "Basic functionality verified"
+      ],
+      "activities": [
+        "Start application locally",
+        "Execute happy path scenario",
+        "Check for console errors",
+        "Verify basic functionality",
+        "Document any issues found"
+      ],
+      "mcp_tools": {
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "QA Agent",
+        "payload": ["verificationStatus", "issuesFound", "readyForTesting"]
+      }
+    },
+    {
+      "step": 4,
+      "name": "Create Test Cases",
+      "short_name": "Create GitHub Test Cases",
+      "owner_agent": "QA Agent",
+      "wama_agents": ["a-test-automator"],
+      "automated": true,
+      "gate": null,
+      "description": "Create test case issues in GitHub from acceptance criteria",
+      "entry_criteria": [
+        "Manual verification passed",
+        "Acceptance criteria available"
+      ],
+      "exit_criteria": [
+        "Test cases created as GitHub issues",
+        "Test cases linked to story",
+        "Coverage mapped to acceptance criteria"
+      ],
+      "activities": [
+        "Parse acceptance criteria",
+        "Generate test case descriptions",
+        "Create GitHub issues for test cases",
+        "Link test cases to story",
+        "Prioritize test cases"
+      ],
+      "mcp_tools": {
+        "jira_mcp": ["get_issue_details"],
+        "enhanced_context_mcp": ["load_enhanced_context"]
+      },
+      "handoff": {
+        "to": "QA Agent (Step 5)",
+        "payload": ["testCaseIds", "acceptanceCriteriaCoverage"]
+      }
+    },
+    {
+      "step": 5,
+      "name": "Implement Tests",
+      "short_name": "Implement Playwright Tests",
+      "owner_agent": "QA Agent",
+      "wama_agents": ["a-test-automator"],
+      "automated": true,
+      "gate": null,
+      "description": "Implement automated tests using Playwright with Allure annotations",
+      "entry_criteria": [
+        "Test cases created",
+        "Test environment available"
+      ],
+      "exit_criteria": [
+        "Playwright tests implemented",
+        "Allure annotations added",
+        "Tests run locally without errors"
+      ],
+      "activities": [
+        "Set up Playwright test structure",
+        "Implement test scenarios",
+        "Add Allure annotations for reporting",
+        "Run tests locally",
+        "Fix any test setup issues"
+      ],
+      "test_framework": {
+        "tool": "Playwright",
+        "reporting": "Allure",
+        "annotations": ["@allure.feature", "@allure.story", "@allure.severity"]
+      },
+      "mcp_tools": {
+        "enhanced_context_mcp": ["load_enhanced_context"]
+      },
+      "handoff": {
+        "to": "QA Agent (Step 6)",
+        "payload": ["testFiles", "testCount", "localRunStatus"]
+      }
+    },
+    {
+      "step": 6,
+      "name": "Execute Tests",
+      "short_name": "Execute Tests",
+      "owner_agent": "QA Agent",
+      "wama_agents": ["a-test-automator"],
+      "automated": "Semi (requires environment)",
+      "gate": {
+        "type": "Quality Gate",
+        "threshold": ">=90% pass rate",
+        "action_on_fail": "Retry up to 3 times, then escalate"
+      },
+      "description": "Execute automated tests and verify quality threshold",
+      "entry_criteria": [
+        "Tests implemented",
+        "Test environment ready"
+      ],
+      "exit_criteria": [
+        "All tests executed",
+        "Pass rate >= 90%",
+        "Allure report generated",
+        "Test results documented"
+      ],
+      "activities": [
+        "Execute Playwright tests",
+        "Generate Allure report",
+        "Calculate pass rate",
+        "Document failed tests",
+        "Retry if below threshold"
+      ],
+      "quality_check": {
+        "type": "test_pass_rate",
+        "minimum": 90,
+        "max_retries": 3,
+        "escalation": "human"
+      },
+      "mcp_tools": {
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "Dev Agent",
+        "payload": ["passRate", "failedTests", "allureReportUrl", "qualityGatePassed"]
+      }
+    },
+    {
+      "step": 7,
+      "name": "PR Creation",
+      "short_name": "PR Creation",
+      "owner_agent": "Dev Agent",
+      "wama_agents": ["a-backend-engineer", "a-frontend-developer"],
+      "automated": true,
+      "gate": null,
+      "description": "Create pull request with proper format and context",
+      "entry_criteria": [
+        "Tests passing (>=90%)",
+        "Branch up to date with target",
+        "All local checks passing"
+      ],
+      "exit_criteria": [
+        "PR created",
+        "Proper commit format",
+        "Description includes context",
+        "Linked to story"
+      ],
+      "activities": [
+        "Rebase on target branch",
+        "Ensure commit format: {PROJECT}-{number}: {summary}",
+        "Create PR with description",
+        "Link PR to Jira story",
+        "Request review"
+      ],
+      "commit_format": "{PROJECT}-{number}: {summary}",
+      "mcp_tools": {
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "Review Agent",
+        "payload": ["prUrl", "branchName", "commitCount", "filesChanged"]
+      }
+    },
+    {
+      "step": 8,
+      "name": "3-Phase PR Review",
+      "short_name": "3-Phase PR Review",
+      "owner_agent": "Review Agent",
+      "wama_agents": ["a-code-reviewer", "a-pr-orchestrator"],
+      "automated": true,
+      "gate": null,
+      "description": "AI-powered 3-phase code review using PR-Agent",
+      "entry_criteria": [
+        "PR created",
+        "CI checks initiated"
+      ],
+      "exit_criteria": [
+        "All 3 phases complete",
+        "Review feedback documented",
+        "Improvement suggestions ranked"
+      ],
+      "phases": [
+        {
+          "phase": 1,
+          "name": "PR Describe",
+          "tool": "pr_describe",
+          "description": "Generate comprehensive PR description and summary"
+        },
+        {
+          "phase": 2,
+          "name": "Security, Performance, Quality Analysis",
+          "tools": ["pr_review"],
+          "description": "Analyze code for security vulnerabilities, performance issues, and code quality with auto-fix suggestions"
+        },
+        {
+          "phase": 3,
+          "name": "Improvement Suggestions",
+          "tool": "pr_improve",
+          "description": "Generate improvement suggestions ranked 1-10 by impact"
+        }
+      ],
+      "mcp_tools": {
+        "pr_agent_mcp_docker": ["pr_describe", "pr_review", "pr_improve", "pr_ask"],
+        "note": "PR-Agent MCP runs on LOCAL DOCKER (port 8188) for security - code never leaves your environment"
+      },
+      "handoff": {
+        "to": "Dev Agent",
+        "payload": ["reviewComments", "securityFindings", "improvementSuggestions", "autoFixApplied"]
+      }
+    },
+    {
+      "step": 9,
+      "name": "Feedback Implementation",
+      "short_name": "Feedback Implementation",
+      "owner_agent": "Dev Agent",
+      "wama_agents": ["a-backend-engineer", "a-frontend-developer"],
+      "automated": true,
+      "gate": null,
+      "description": "Address review feedback and re-run tests",
+      "entry_criteria": [
+        "Review feedback received",
+        "Feedback items documented"
+      ],
+      "exit_criteria": [
+        "All review comments addressed",
+        "Tests re-run and passing",
+        "Review Agent notified"
+      ],
+      "activities": [
+        "Address security findings (highest priority)",
+        "Implement improvement suggestions",
+        "Re-run tests",
+        "Update PR with changes",
+        "Request re-review"
+      ],
+      "mcp_tools": {
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "Review Agent (re-review) or CI/CD",
+        "payload": ["changesApplied", "testsRerun", "readyForMerge"]
+      }
+    },
+    {
+      "step": 10,
+      "name": "CI/CD Pipeline",
+      "short_name": "Pipeline Execution",
+      "owner_agent": "CI/CD (Automated)",
+      "wama_agents": [],
+      "automated": "Semi (external system)",
+      "gate": {
+        "type": "Quality Gate",
+        "threshold": "All checks green",
+        "action_on_fail": "Block merge"
+      },
+      "description": "Execute automated CI/CD pipeline",
+      "entry_criteria": [
+        "Review approved",
+        "All feedback addressed"
+      ],
+      "exit_criteria": [
+        "Build passes",
+        "All tests pass",
+        "Linting passes",
+        "Security scan passes"
+      ],
+      "activities": [
+        "Trigger CI pipeline",
+        "Run build",
+        "Execute test suite",
+        "Run linting",
+        "Run security scan"
+      ],
+      "pipeline_checks": ["build", "unit_tests", "integration_tests", "lint", "security_scan", "type_check"],
+      "mcp_tools": {
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "Human (Step 11)",
+        "payload": ["pipelineStatus", "checkResults", "readyForMerge"]
+      }
+    },
+    {
+      "step": 11,
+      "name": "Human Merge Approval",
+      "short_name": "Merge Approval",
+      "owner_agent": "Human",
+      "wama_agents": [],
+      "automated": false,
+      "gate": {
+        "type": "Human Gate",
+        "description": "ONLY mandatory human intervention point",
+        "action": "Approve or request changes"
+      },
+      "description": "Final human review and merge approval",
+      "entry_criteria": [
+        "All automated checks pass",
+        "Review approved",
+        "No outstanding blockers"
+      ],
+      "exit_criteria": [
+        "Human approves merge",
+        "PR merged to target branch"
+      ],
+      "activities": [
+        "Human reviews final PR state",
+        "Verifies no critical issues missed",
+        "Approves and merges PR"
+      ],
+      "important": "This is the ONLY mandatory human gate in the entire SDLC",
+      "mcp_tools": {},
+      "handoff": {
+        "to": "Doc Agent",
+        "payload": ["mergeCommit", "targetBranch", "deploymentTriggered"]
+      }
+    },
+    {
+      "step": 12,
+      "name": "Documentation Update",
+      "short_name": "Confluence Update",
+      "owner_agent": "Doc Agent",
+      "wama_agents": ["a-documentation-specialist"],
+      "automated": true,
+      "gate": null,
+      "description": "Update Confluence with implementation details and test results",
+      "entry_criteria": [
+        "PR merged",
+        "Deployment successful (if applicable)"
+      ],
+      "exit_criteria": [
+        "Confluence pages updated",
+        "Test results linked",
+        "Architecture diagrams updated (if needed)"
+      ],
+      "activities": [
+        "Update feature documentation page",
+        "Link Allure test report",
+        "Update architecture diagrams if changed",
+        "Add deployment notes",
+        "Cross-link related pages"
+      ],
+      "mcp_tools": {
+        "confluence_mcp": ["create_page", "update_page", "insert_jira_macro", "upload_and_embed_attachment"],
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "PM Agent",
+        "payload": ["confluencePageUrl", "documentationComplete"]
+      }
+    },
+    {
+      "step": 13,
+      "name": "Story Closure",
+      "short_name": "Story → Done",
+      "owner_agent": "PM Agent",
+      "wama_agents": ["a-project-manager"],
+      "automated": true,
+      "gate": null,
+      "description": "Verify completion and close the story",
+      "entry_criteria": [
+        "Code merged",
+        "Documentation updated",
+        "Tests passing in target branch"
+      ],
+      "exit_criteria": [
+        "All acceptance criteria verified",
+        "Story marked as Done",
+        "Next story selected (return to Step 1)"
+      ],
+      "activities": [
+        "Verify all acceptance criteria complete",
+        "Add completion comment with summary",
+        "Transition story to Done",
+        "Update sprint burndown",
+        "Select next story from backlog"
+      ],
+      "mcp_tools": {
+        "jira_mcp": ["get_issue_details", "transition_issue", "add_comment", "search_issues"]
+      },
+      "handoff": {
+        "to": "PM Agent (Step 1) - Next Story",
+        "payload": ["completedStoryKey", "nextStoryKey", "sprintProgress"]
+      }
+    }
+  ],
+
+  "inter_agent_handoff_format": {
+    "schema": {
+      "from": "Agent role (string)",
+      "to": "Target agent role (string)",
+      "messageType": "handoff",
+      "timestamp": "ISO 8601 timestamp",
+      "payload": {
+        "storyKey": "JIRA issue key",
+        "step": "Current step number",
+        "qualityScore": "Self-evaluated quality (1-10)",
+        "nextActions": "Array of next actions for target agent"
+      }
+    },
+    "example": {
+      "from": "Dev Agent",
+      "to": "QA Agent",
+      "messageType": "handoff",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "payload": {
+        "storyKey": "PROJ-123",
+        "step": 3,
+        "qualityScore": 8.2,
+        "branchName": "feature/PROJ-123-user-auth",
+        "nextActions": ["Create test cases from AC", "Implement Playwright tests", "Execute tests"]
+      }
+    }
+  },
+
+  "escalation_protocol": {
+    "triggers": [
+      "Quality score below 7/10 after 3 attempts",
+      "Test pass rate below 90% after 3 retries",
+      "CI/CD pipeline fails 3 times",
+      "Security vulnerability found (auto-escalate)"
+    ],
+    "escalation_to": "Human + Coordinator Agent (a-architect-review)",
+    "required_information": [
+      "Failed step number and name",
+      "Number of retry attempts",
+      "Failure reason",
+      "Suggested remediation"
+    ]
+  },
+
+  "recommended_tools_by_step": {
+    "1": {"mcp": "JIRA MCP", "tools": ["search_issues", "transition_issue", "add_comment"]},
+    "2": {"mcp": "Enhanced Context MCP", "tools": ["load_enhanced_context"]},
+    "3": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
+    "4": {"mcp": "JIRA MCP + Enhanced Context", "tools": ["get_issue_details", "load_enhanced_context"]},
+    "5": {"mcp": "Enhanced Context MCP", "tools": ["load_enhanced_context"]},
+    "6": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
+    "7": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
+    "8": {"mcp": "PR-Agent MCP (Docker localhost:8188)", "tools": ["pr_describe", "pr_review", "pr_improve"]},
+    "9": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
+    "10": {"mcp": "External CI/CD", "tools": []},
+    "11": {"mcp": "Human", "tools": []},
+    "12": {"mcp": "Confluence MCP", "tools": ["create_page", "update_page"]},
+    "13": {"mcp": "JIRA MCP", "tools": ["transition_issue", "add_comment", "search_issues"]}
+  }
+}

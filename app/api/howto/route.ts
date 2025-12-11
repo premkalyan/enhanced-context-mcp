@@ -91,11 +91,29 @@ export async function GET() {
       sdlc_guidance: [
         {
           name: "get_sdlc_guidance",
-          description: "Get phase-specific SDLC guidance and best practices",
+          description: "Get VISHKAR 13-Step Autonomous SDLC guidance with agent mappings, MCP tools, and quality gates",
           parameters: {
-            phase: "requirements | design | implementation | testing | deployment | maintenance"
+            section: "overview | steps | step | agents | mcp_servers | handoff | escalation | tools_by_step | full",
+            step_number: "1-13 (required when section is 'step')",
+            agent_role: "pm_agent | dev_agent | qa_agent | review_agent | doc_agent | coordinator"
           },
-          returns: "Phase-specific processes, artifacts, best practices, and quality gates"
+          returns: {
+            overview: "SDLC summary, quality thresholds (7/10 quality, 90% tests), philosophy",
+            steps: "All 13 steps with entry/exit criteria, MCP tools, handoffs",
+            step: "Detailed guidance for specific step (requires step_number)",
+            agents: "Agent mapping - which WAMA agents own which steps",
+            mcp_servers: "Vercel MCPs vs Docker MCPs (PR-Agent runs locally)",
+            handoff: "Inter-agent handoff format with example payload",
+            escalation: "When and how to escalate to humans",
+            tools_by_step: "MCP tools recommended for each step",
+            full: "Complete SDLC documentation"
+          },
+          examples: [
+            { section: "overview", description: "Get SDLC summary and quality thresholds" },
+            { section: "step", step_number: 8, description: "Get Step 8 (3-Phase PR Review) details" },
+            { section: "steps", agent_role: "qa_agent", description: "Get steps owned by QA Agent" },
+            { section: "mcp_servers", description: "See which MCPs are on Vercel vs Docker" }
+          ]
         }
       ],
       ecosystem_info: [

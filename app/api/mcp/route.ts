@@ -423,6 +423,32 @@ const TOOLS = [
       },
       required: ['agent_name', 'operation', 'agent_data']
     }
+  },
+  {
+    name: 'get_sdlc_guidance',
+    description: 'Get VISHKAR 13-Step Autonomous SDLC guidance. Returns the complete autonomous development lifecycle with agent mappings, quality gates, MCP tool recommendations, and inter-agent handoff protocols. Use this to understand what agents do at each step and which MCP tools to use.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'tools_by_step', 'full'],
+          description: 'Which section: overview (summary + thresholds), steps (all 13 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), tools_by_step (MCP tools per step), full (everything)'
+        },
+        step_number: {
+          type: 'number',
+          minimum: 1,
+          maximum: 13,
+          description: 'Get detailed guidance for a specific step (1-13). Required when section is "step".'
+        },
+        agent_role: {
+          type: 'string',
+          enum: ['pm_agent', 'dev_agent', 'qa_agent', 'review_agent', 'doc_agent', 'coordinator'],
+          description: 'Filter steps by agent role to see what a specific agent is responsible for'
+        }
+      },
+      required: []
+    }
   }
 ];
 
@@ -513,6 +539,171 @@ function handleMcpEcosystemGuide(args: { section?: string; mcp_name?: string }) 
   }
 }
 
+// Handler for SDLC Guidance - VISHKAR 13-Step Autonomous SDLC
+function handleSdlcGuidance(args: { section?: string; step_number?: number; agent_role?: string }) {
+  const { section = 'full', step_number, agent_role } = args;
+
+  // Import SDLC config (inline for serverless)
+  const SDLC = {
+    name: "VISHKAR 13-Step Autonomous SDLC",
+    version: "1.0.0",
+    description: "Automated development lifecycle from story selection to completion with quality gates and human approval points",
+
+    overview: {
+      purpose: "Enable autonomous agents to execute the full software development lifecycle with minimal human intervention",
+      philosophy: "Automation first, human oversight at critical gates",
+      quality_thresholds: {
+        minimum_quality_score: 7,
+        test_pass_rate: 90,
+        max_retries: 3,
+        escalation_trigger: "After 3 failed retries, escalate to human"
+      }
+    },
+
+    mcp_servers: {
+      vercel_hosted: [
+        { name: "Project Registry", url: "https://project-registry-henna.vercel.app", howto: "https://project-registry-henna.vercel.app/api/howto", purpose: "API key management", used_in_steps: "All" },
+        { name: "JIRA MCP", url: "https://jira-mcp-pi.vercel.app", howto: "https://jira-mcp-pi.vercel.app/api/howto", purpose: "Issue tracking, story lifecycle", used_in_steps: [1, 13] },
+        { name: "Confluence MCP", url: "https://confluence-mcp-six.vercel.app", howto: "https://confluence-mcp-six.vercel.app/api/howto", purpose: "Documentation, test reports", used_in_steps: [12] },
+        { name: "Enhanced Context MCP", url: "https://enhanced-context-mcp.vercel.app", howto: "https://enhanced-context-mcp.vercel.app/api/howto", purpose: "Context loading, SDLC guidance", used_in_steps: "All" },
+        { name: "Story Crafter MCP", url: "https://storycrafter-mcp.vercel.app", howto: "https://storycrafter-mcp.vercel.app/api/howto", purpose: "Backlog generation", used_in_steps: [1] }
+      ],
+      docker_local: [
+        { name: "PR-Agent MCP", url: "http://localhost:8188", port: 8188, purpose: "AI-powered PR review (runs locally for security)", used_in_steps: [8], note: "Code review runs on LOCAL Docker - code never leaves your environment" }
+      ]
+    },
+
+    agent_mapping: {
+      pm_agent: { wama_agents: ["a-project-manager"], owned_steps: [1, 13], responsibilities: ["Story selection", "Story completion", "Sprint management"] },
+      dev_agent: { wama_agents: ["a-backend-engineer", "a-frontend-developer"], owned_steps: [2, 3, 7, 9], responsibilities: ["Implementation", "Manual verification", "PR creation", "Feedback implementation"] },
+      qa_agent: { wama_agents: ["a-test-automator", "a-qa-engineer"], owned_steps: [4, 5, 6], responsibilities: ["Test case creation", "Test implementation", "Test execution"] },
+      review_agent: { wama_agents: ["a-code-reviewer", "a-pr-orchestrator"], owned_steps: [8], responsibilities: ["3-phase PR review", "Security analysis", "Performance analysis"] },
+      doc_agent: { wama_agents: ["a-documentation-specialist"], owned_steps: [12], responsibilities: ["Documentation updates", "Architecture diagrams", "Test report linking"] },
+      coordinator: { wama_agents: ["a-architect-review"], owned_steps: "All (monitoring)", responsibilities: ["Cross-step monitoring", "Escalation handling", "Quality oversight"] }
+    },
+
+    steps: [
+      { step: 1, name: "Story Selection", short_name: "Story → In Progress", owner: "PM Agent", automated: true, gate: null, mcp_tools: { jira: ["search_issues", "transition_issue", "add_comment"] }, entry: ["Stories in Ready", "No blockers"], exit: ["Story in In Progress", "AC defined"], handoff_to: "Dev Agent" },
+      { step: 2, name: "Implementation", short_name: "Implementation", owner: "Dev Agent", automated: true, gate: null, mcp_tools: { enhanced_context: ["load_enhanced_context"] }, entry: ["Story in progress"], exit: ["Code complete", "Quality >= 7/10"], handoff_to: "Dev Agent (Step 3)" },
+      { step: 3, name: "Manual Verification", short_name: "Manual Verification", owner: "Dev Agent", automated: true, gate: "Optional", mcp_tools: { jira: ["add_comment"] }, entry: ["Implementation complete"], exit: ["App starts", "Happy path works"], handoff_to: "QA Agent" },
+      { step: 4, name: "Create Test Cases", short_name: "Create GitHub Test Cases", owner: "QA Agent", automated: true, gate: null, mcp_tools: { jira: ["get_issue_details"] }, entry: ["Verification passed"], exit: ["Test cases created"], handoff_to: "QA Agent (Step 5)" },
+      { step: 5, name: "Implement Tests", short_name: "Implement Playwright Tests", owner: "QA Agent", automated: true, gate: null, mcp_tools: { enhanced_context: ["load_enhanced_context"] }, entry: ["Test cases ready"], exit: ["Playwright tests implemented"], handoff_to: "QA Agent (Step 6)" },
+      { step: 6, name: "Execute Tests", short_name: "Execute Tests", owner: "QA Agent", automated: "Semi", gate: { type: "Quality", threshold: ">=90% pass" }, mcp_tools: { jira: ["add_comment"] }, entry: ["Tests implemented"], exit: ["Pass rate >= 90%"], handoff_to: "Dev Agent" },
+      { step: 7, name: "PR Creation", short_name: "PR Creation", owner: "Dev Agent", automated: true, gate: null, mcp_tools: { jira: ["add_comment"] }, entry: ["Tests passing"], exit: ["PR created"], handoff_to: "Review Agent" },
+      { step: 8, name: "3-Phase PR Review", short_name: "3-Phase PR Review", owner: "Review Agent", automated: true, gate: null, mcp_tools: { pr_agent_docker: ["pr_describe", "pr_review", "pr_improve"] }, entry: ["PR created"], exit: ["Review complete"], handoff_to: "Dev Agent", note: "PR-Agent runs on LOCAL DOCKER (port 8188)" },
+      { step: 9, name: "Feedback Implementation", short_name: "Feedback Implementation", owner: "Dev Agent", automated: true, gate: null, mcp_tools: { jira: ["add_comment"] }, entry: ["Review feedback received"], exit: ["All feedback addressed"], handoff_to: "CI/CD" },
+      { step: 10, name: "CI/CD Pipeline", short_name: "Pipeline Execution", owner: "CI/CD", automated: "Semi", gate: { type: "Quality", threshold: "All green" }, mcp_tools: {}, entry: ["Feedback addressed"], exit: ["All checks pass"], handoff_to: "Human" },
+      { step: 11, name: "Human Merge Approval", short_name: "Merge Approval", owner: "Human", automated: false, gate: { type: "Human Gate", description: "ONLY mandatory human intervention" }, mcp_tools: {}, entry: ["CI passing"], exit: ["PR merged"], handoff_to: "Doc Agent" },
+      { step: 12, name: "Documentation Update", short_name: "Confluence Update", owner: "Doc Agent", automated: true, gate: null, mcp_tools: { confluence: ["create_page", "update_page", "insert_jira_macro"] }, entry: ["PR merged"], exit: ["Docs updated"], handoff_to: "PM Agent" },
+      { step: 13, name: "Story Closure", short_name: "Story → Done", owner: "PM Agent", automated: true, gate: null, mcp_tools: { jira: ["transition_issue", "add_comment", "search_issues"] }, entry: ["Docs complete"], exit: ["Story Done", "Next story selected"], handoff_to: "PM Agent (Step 1)" }
+    ],
+
+    handoff_format: {
+      schema: { from: "Agent role", to: "Target agent", messageType: "handoff", payload: { storyKey: "JIRA key", step: "number", qualityScore: "1-10", nextActions: "array" } },
+      example: { from: "Dev Agent", to: "QA Agent", messageType: "handoff", payload: { storyKey: "PROJ-123", step: 3, qualityScore: 8.2, nextActions: ["Create test cases", "Implement tests"] } }
+    },
+
+    escalation: {
+      triggers: ["Quality < 7/10 after 3 attempts", "Test pass rate < 90% after 3 retries", "CI fails 3 times", "Security vulnerability (auto-escalate)"],
+      escalation_to: "Human + Coordinator (a-architect-review)"
+    },
+
+    tools_by_step: {
+      1: { mcp: "JIRA MCP (Vercel)", tools: ["search_issues", "transition_issue", "add_comment"] },
+      2: { mcp: "Enhanced Context MCP (Vercel)", tools: ["load_enhanced_context"] },
+      3: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
+      4: { mcp: "JIRA MCP (Vercel)", tools: ["get_issue_details"] },
+      5: { mcp: "Enhanced Context MCP (Vercel)", tools: ["load_enhanced_context"] },
+      6: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
+      7: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
+      8: { mcp: "PR-Agent MCP (Docker localhost:8188)", tools: ["pr_describe", "pr_review", "pr_improve"] },
+      9: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
+      10: { mcp: "External CI/CD", tools: [] },
+      11: { mcp: "Human", tools: [] },
+      12: { mcp: "Confluence MCP (Vercel)", tools: ["create_page", "update_page"] },
+      13: { mcp: "JIRA MCP (Vercel)", tools: ["transition_issue", "add_comment", "search_issues"] }
+    }
+  };
+
+  // Filter steps by agent role if specified
+  const filterStepsByAgent = (steps: any[], role: string) => {
+    const agentSteps = SDLC.agent_mapping[role as keyof typeof SDLC.agent_mapping]?.owned_steps;
+    if (!agentSteps || agentSteps === "All (monitoring)") return steps;
+    return steps.filter(s => (agentSteps as number[]).includes(s.step));
+  };
+
+  // Get specific step
+  if (section === 'step' && step_number) {
+    const step = SDLC.steps.find(s => s.step === step_number);
+    if (!step) return { error: `Step ${step_number} not found. Valid steps: 1-13` };
+    return {
+      step,
+      mcp_tools: SDLC.tools_by_step[step_number as keyof typeof SDLC.tools_by_step],
+      quality_thresholds: SDLC.overview.quality_thresholds
+    };
+  }
+
+  switch (section) {
+    case 'overview':
+      return {
+        name: SDLC.name,
+        description: SDLC.description,
+        ...SDLC.overview,
+        total_steps: 13,
+        human_gates: 1,
+        automated_steps: 12
+      };
+
+    case 'steps':
+      const steps = agent_role ? filterStepsByAgent(SDLC.steps, agent_role) : SDLC.steps;
+      return {
+        total: steps.length,
+        steps,
+        steps_summary: steps.map(s => ({ step: s.step, name: s.name, owner: s.owner, automated: s.automated }))
+      };
+
+    case 'agents':
+      return {
+        agent_mapping: SDLC.agent_mapping,
+        usage: "Use agent_role parameter to filter steps by agent"
+      };
+
+    case 'mcp_servers':
+      return {
+        description: "MCP servers used in the SDLC - some on Vercel (cloud), PR-Agent on local Docker",
+        ...SDLC.mcp_servers,
+        important_note: "PR-Agent MCP runs on LOCAL DOCKER (port 8188) for security - your code never leaves your environment during review"
+      };
+
+    case 'handoff':
+      return SDLC.handoff_format;
+
+    case 'escalation':
+      return SDLC.escalation;
+
+    case 'tools_by_step':
+      return {
+        description: "MCP tools recommended for each SDLC step",
+        tools: SDLC.tools_by_step
+      };
+
+    case 'full':
+    default:
+      return {
+        ...SDLC,
+        summary: {
+          name: SDLC.name,
+          total_steps: 13,
+          human_gates: 1,
+          automated_steps: 12,
+          vercel_mcps: SDLC.mcp_servers.vercel_hosted.map(m => m.name),
+          docker_mcps: SDLC.mcp_servers.docker_local.map(m => `${m.name} (port ${m.port})`),
+          agent_roles: Object.keys(SDLC.agent_mapping)
+        }
+      };
+  }
+}
+
 // Simple authentication check
 function isAuthenticated(request: NextRequest): boolean {
   const apiKey = request.headers.get('x-api-key');
@@ -555,6 +746,10 @@ export async function POST(request: NextRequest) {
     switch (tool) {
       case 'get_mcp_ecosystem_guide':
         result = handleMcpEcosystemGuide(args || {});
+        break;
+
+      case 'get_sdlc_guidance':
+        result = handleSdlcGuidance(args || {});
         break;
 
       case 'load_enhanced_context':
