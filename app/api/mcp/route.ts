@@ -449,6 +449,26 @@ const TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'get_poc_building_guide',
+    description: 'Get comprehensive guidance on building interactive Proof of Concept (POC) sites using the QIP methodology. Includes the 6-section framework, page layouts, data templates, UI patterns, and client branding extraction guidance.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['overview', 'framework', 'methodology', 'layouts', 'templates', 'ui_patterns', 'branding', 'checklist', 'full'],
+          description: 'Which section: overview (quick summary), framework (6 sections), methodology (step-by-step process), layouts (page wireframes), templates (JSON data structures), ui_patterns (React components), branding (client color/font extraction), checklist (quick start), full (everything)'
+        },
+        page_type: {
+          type: 'string',
+          enum: ['questions', 'architecture', 'delivery', 'risks', 'north_star', 'demo'],
+          description: 'Get detailed guidance for a specific POC page type'
+        }
+      },
+      required: []
+    }
   }
 ];
 
@@ -704,6 +724,292 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
   }
 }
 
+// Handler for POC Building Guide - QIP Methodology
+function handlePocBuildingGuide(args: { section?: string; page_type?: string }) {
+  const { section = 'full', page_type } = args;
+
+  const POC_GUIDE = {
+    name: "QIP POC Building Methodology",
+    version: "1.0.0",
+    description: "A structured approach to building comprehensive, interactive Proof of Concept sites that win stakeholder buy-in",
+
+    overview: {
+      purpose: "Build POCs that stakeholders can navigate in 30-60 minutes with confidence that scope, risks, and feasibility are documented",
+      principles: [
+        "Questions First - Define scope before designing",
+        "Tell a Story - Architecture is a journey, not a data dump",
+        "Show Feasibility - WBS proves you can deliver",
+        "Address Risks - Shows mature thinking",
+        "Paint the Vision - North Star inspires buy-in",
+        "Demonstrate Live - Working demo beats slides"
+      ],
+      result: "Comprehensive, interactive POC that wins stakeholder buy-in"
+    },
+
+    framework: {
+      description: "Every POC should have these 6 core sections",
+      sections: [
+        { number: 1, name: "Questions", purpose: "Clarify scope & requirements", key_content: "Interactive Q&A table with 'Our Understanding'", page: "/questions" },
+        { number: 2, name: "Architecture", purpose: "Show the journey from problem to solution", key_content: "Multi-stage narrative with Mermaid diagrams", page: "/architecture" },
+        { number: 3, name: "Delivery", purpose: "Prove feasibility with WBS", key_content: "Phases, effort, team, timeline with what-if analysis", page: "/delivery" },
+        { number: 4, name: "Risks", purpose: "Show you've thought it through", key_content: "Risk register with mitigations and contingencies", page: "/risks" },
+        { number: 5, name: "North Star", purpose: "Paint the vision beyond MVP", key_content: "Future capabilities, competitive differentiation", page: "/what-else" },
+        { number: 6, name: "Demo", purpose: "Show, don't tell", key_content: "Interactive live demonstration with scenarios", page: "/pipeline" }
+      ]
+    },
+
+    methodology: {
+      description: "Template → Structure → Fill approach",
+      steps: [
+        {
+          step: 1,
+          name: "Start with Questions",
+          why: "Questions define scope. Everything else flows from answered questions.",
+          structure: ["Clarifying questions table", "Categories (Scope, Technical, Integration, Timeline)", "'Our Understanding' column", "Deadline badge (creates urgency)"]
+        },
+        {
+          step: 2,
+          name: "Create Architecture Journey",
+          why: "Tell a story, not dump information",
+          parts: [
+            { part: "A", name: "Business Problem", content: "Current State → Pain Points → Requirements" },
+            { part: "B", name: "Solution Design", content: "Approach → Components → Data Flow" },
+            { part: "C", name: "Technology", content: "Infrastructure → AI/ML → Security" },
+            { part: "D", name: "Operations", content: "Monitoring → Support → Evolution" }
+          ],
+          stage_content: ["Story/narrative (what & why)", "Mermaid diagram", "Outcomes (deliverables)", "Example (concrete instance)", "Risks (linked to risk register)", "CMMI/Framework alignment"]
+        },
+        {
+          step: 3,
+          name: "Build Delivery Plan (WBS)",
+          structure: ["Phases (6 phases, 9 months typical)", "Tasks with effort (person-days)", "Team Roles (7 roles with rates)", "Production Drops (5 incremental releases)", "Volume Assumptions", "Monthly Staffing"],
+          features: ["Editable effort fields (what-if analysis)", "Auto-calculated totals & utilization", "CSV export for external tools"]
+        },
+        {
+          step: 4,
+          name: "Document Risks",
+          structure: ["Summary cards (total, critical, open, contingencies)", "Risk table with filters", "Impact/Probability matrix", "Owner, Mitigation, Contingency fields"]
+        },
+        {
+          step: 5,
+          name: "Define North Star Vision",
+          structure: ["Vision Statement (3-phase evolution)", "Architecture Evolution diagram", "Competitive Differentiation", "Strategic Capabilities", "Business Value metrics", "Evolution Roadmap"]
+        },
+        {
+          step: 6,
+          name: "Create Live Demo",
+          structure: ["Scenario Selector (4 demo scenarios)", "Interactive Flow (ReactFlow canvas)", "Event Log (real-time activity)", "Phase Progress indicator", "Output Integration (Jira tickets, Confluence reports)"]
+        }
+      ]
+    },
+
+    page_layouts: {
+      questions: {
+        name: "Questions Page",
+        sections: ["Header with Deadline Badge", "Questions Table (ID, Question, Category, Our Understanding)", "Editable fields for interpretations"]
+      },
+      architecture: {
+        name: "Architecture Page",
+        sections: ["Stage Navigation (Parts A-D)", "Main Content (Title, Story, Diagram, Outcomes)", "Progress Bar", "Side Panel (Examples + Risks)"]
+      },
+      delivery: {
+        name: "Delivery Page (WBS)",
+        sections: ["Summary Cards (Total Effort, Team Size, Duration)", "Expandable Phase Sections", "Task Tables with Editable Effort", "Monthly Staffing Chart", "Team Roles", "Production Drops"]
+      },
+      risks: {
+        name: "Risks Page",
+        sections: ["Summary Cards", "Filterable Risk Table", "Impact/Probability indicators"]
+      },
+      north_star: {
+        name: "North Star Page",
+        sections: ["Vision Statement", "Architecture Evolution Diagram", "Feature Comparison", "Capability Areas", "Business Value Cards", "Timeline"]
+      },
+      demo: {
+        name: "Demo Page",
+        sections: ["Scenario Selector", "ReactFlow Canvas", "Event Log", "Phase Progress"]
+      }
+    },
+
+    templates: {
+      questions_json: {
+        description: "Questions data structure",
+        schema: {
+          questions: [{
+            id: "Q1",
+            question: "What systems need to integrate?",
+            category: "Technical | Scope | Integration | Timeline",
+            priority: "High | Medium | Low",
+            ourUnderstanding: "Your interpretation"
+          }]
+        }
+      },
+      stages_json: {
+        description: "Architecture stages data structure",
+        schema: {
+          stages: [{
+            id: "1.0",
+            part: "A | B | C | D",
+            title: "Stage Title",
+            subtitle: "Stage Subtitle",
+            story: "Narrative description",
+            diagram: "Mermaid flowchart syntax",
+            outcomes: ["Outcome 1", "Outcome 2"],
+            questionIds: ["Q1", "Q2"],
+            risks: [{ risk: "Description", impact: "High", probability: "Medium", mitigation: "How to address" }]
+          }]
+        }
+      },
+      wbs_json: {
+        description: "Work Breakdown Structure",
+        schema: {
+          phases: [{
+            id: "1",
+            phase: "Phase Name",
+            duration: "Weeks 1-6",
+            items: [{ id: "1.1", task: "Task Name", description: "Details", effort: 9, role: "BA" }]
+          }],
+          teamRoles: [{ id: "TL", name: "Tech Lead", count: 1 }],
+          productionDrops: [{ drop: "Drop 1", week: "Week 9", scope: ["Feature 1"] }]
+        }
+      }
+    },
+
+    ui_patterns: {
+      card_component: {
+        description: "Standard card with icon and content",
+        classes: "bg-white dark:bg-zinc-800 rounded-lg border p-6"
+      },
+      editable_table: {
+        description: "Table with inline-editable fields for what-if analysis"
+      },
+      progress_steps: {
+        description: "Horizontal step indicator",
+        active_classes: "bg-purple-500 text-white",
+        inactive_classes: "bg-zinc-200"
+      },
+      color_coding: {
+        part_a_business: { color: "Red/Orange", classes: "bg-red-100 text-red-700" },
+        part_b_solution: { color: "Blue", classes: "bg-blue-100 text-blue-700" },
+        part_c_technology: { color: "Purple", classes: "bg-purple-100 text-purple-700" },
+        part_d_operations: { color: "Green", classes: "bg-green-100 text-green-700" },
+        critical_risk: { color: "Red", classes: "bg-red-500" },
+        medium_risk: { color: "Amber", classes: "bg-amber-500" },
+        low_risk: { color: "Green", classes: "bg-green-500" }
+      }
+    },
+
+    client_branding: {
+      description: "Extract and apply client-specific branding for POC customization",
+      importance: "POCs should reflect client's visual identity to increase stakeholder buy-in",
+      extraction_tool: {
+        name: "AntiGravity",
+        purpose: "AI-powered tool for extracting color schemes and typography from client websites or brand assets",
+        capabilities: [
+          "Extract primary, secondary, and accent colors from client website",
+          "Identify font families (headings, body text)",
+          "Generate Tailwind CSS color palette",
+          "Create CSS custom properties for theming",
+          "Suggest dark mode color variants"
+        ],
+        usage: [
+          "1. Provide client website URL or brand assets to AntiGravity",
+          "2. AntiGravity analyzes visual elements and extracts branding",
+          "3. Receive color palette (hex/RGB) and font stack",
+          "4. Apply to POC via Tailwind config or CSS variables",
+          "5. Validate with client before finalizing"
+        ]
+      },
+      implementation: {
+        tailwind_config: "Extend theme.colors with client palette",
+        css_variables: "Define --color-primary, --color-secondary, etc.",
+        font_import: "Add client fonts via Google Fonts or local files"
+      },
+      best_practices: [
+        "Always extract branding BEFORE building UI components",
+        "Use client's primary color for CTAs and key interactive elements",
+        "Maintain sufficient contrast for accessibility (WCAG 2.1)",
+        "Test both light and dark modes with client colors",
+        "Document color decisions for consistency"
+      ]
+    },
+
+    checklist: {
+      description: "Quick Start Checklist",
+      items: [
+        { task: "Extract client branding using AntiGravity", section: "Branding" },
+        { task: "Create /questions page with clarifying questions table", section: "Questions" },
+        { task: "Create /architecture page with 4-part journey (16 stages)", section: "Architecture" },
+        { task: "Add Mermaid diagrams for each stage", section: "Architecture" },
+        { task: "Create /delivery page with WBS and team roles", section: "Delivery" },
+        { task: "Extract risks to /risks page with mitigations", section: "Risks" },
+        { task: "Create /what-else page with North Star vision", section: "North Star" },
+        { task: "Build /pipeline demo with scenarios", section: "Demo" },
+        { task: "Add access control (PasswordGate)", section: "Security" },
+        { task: "Test dark mode support", section: "UI" },
+        { task: "Review with stakeholders", section: "Final" }
+      ]
+    },
+
+    file_structure: {
+      app: ["questions/page.tsx", "architecture/page.tsx", "delivery/page.tsx", "risks/page.tsx", "what-else/page.tsx", "pipeline/page.tsx"],
+      content: ["questions.json", "stages.json", "examples/"],
+      components: ["QuestionsTable.tsx", "StageNavigation.tsx", "StageContent.tsx", "ProgressBar.tsx", "SidePanel.tsx"]
+    }
+  };
+
+  // Get specific page type guidance
+  if (page_type) {
+    const pageGuide = {
+      questions: { ...POC_GUIDE.framework.sections[0], layout: POC_GUIDE.page_layouts.questions, template: POC_GUIDE.templates.questions_json, methodology: POC_GUIDE.methodology.steps[0] },
+      architecture: { ...POC_GUIDE.framework.sections[1], layout: POC_GUIDE.page_layouts.architecture, template: POC_GUIDE.templates.stages_json, methodology: POC_GUIDE.methodology.steps[1] },
+      delivery: { ...POC_GUIDE.framework.sections[2], layout: POC_GUIDE.page_layouts.delivery, template: POC_GUIDE.templates.wbs_json, methodology: POC_GUIDE.methodology.steps[2] },
+      risks: { ...POC_GUIDE.framework.sections[3], layout: POC_GUIDE.page_layouts.risks, methodology: POC_GUIDE.methodology.steps[3] },
+      north_star: { ...POC_GUIDE.framework.sections[4], layout: POC_GUIDE.page_layouts.north_star, methodology: POC_GUIDE.methodology.steps[4] },
+      demo: { ...POC_GUIDE.framework.sections[5], layout: POC_GUIDE.page_layouts.demo, methodology: POC_GUIDE.methodology.steps[5] }
+    };
+    return pageGuide[page_type as keyof typeof pageGuide] || { error: `Unknown page type: ${page_type}` };
+  }
+
+  switch (section) {
+    case 'overview':
+      return POC_GUIDE.overview;
+
+    case 'framework':
+      return POC_GUIDE.framework;
+
+    case 'methodology':
+      return POC_GUIDE.methodology;
+
+    case 'layouts':
+      return POC_GUIDE.page_layouts;
+
+    case 'templates':
+      return POC_GUIDE.templates;
+
+    case 'ui_patterns':
+      return POC_GUIDE.ui_patterns;
+
+    case 'branding':
+      return POC_GUIDE.client_branding;
+
+    case 'checklist':
+      return POC_GUIDE.checklist;
+
+    case 'full':
+    default:
+      return {
+        ...POC_GUIDE,
+        summary: {
+          name: POC_GUIDE.name,
+          sections: POC_GUIDE.framework.sections.map(s => s.name),
+          key_principles: POC_GUIDE.overview.principles,
+          branding_tool: "AntiGravity",
+          checklist_items: POC_GUIDE.checklist.items.length
+        }
+      };
+  }
+}
+
 // Simple authentication check
 function isAuthenticated(request: NextRequest): boolean {
   const apiKey = request.headers.get('x-api-key');
@@ -750,6 +1056,10 @@ export async function POST(request: NextRequest) {
 
       case 'get_sdlc_guidance':
         result = handleSdlcGuidance(args || {});
+        break;
+
+      case 'get_poc_building_guide':
+        result = handlePocBuildingGuide(args || {});
         break;
 
       case 'load_enhanced_context':

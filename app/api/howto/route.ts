@@ -127,6 +127,33 @@ export async function GET() {
             request_format: "JSON-RPC 2.0 examples"
           }
         }
+      ],
+      poc_building: [
+        {
+          name: "get_poc_building_guide",
+          description: "Get comprehensive guidance on building interactive POC sites using the QIP methodology",
+          parameters: {
+            section: "overview | framework | methodology | layouts | templates | ui_patterns | branding | checklist | full",
+            page_type: "questions | architecture | delivery | risks | north_star | demo"
+          },
+          returns: {
+            overview: "Quick summary of QIP methodology and key principles",
+            framework: "6-section framework (Questions, Architecture, Delivery, Risks, North Star, Demo)",
+            methodology: "Step-by-step process: Template → Structure → Fill",
+            layouts: "Page layout wireframes and structures",
+            templates: "JSON data templates for questions, stages, WBS",
+            ui_patterns: "React component patterns and color coding system",
+            branding: "Client branding extraction using AntiGravity tool",
+            checklist: "Quick start checklist for POC creation",
+            full: "Complete guide with all sections"
+          },
+          examples: [
+            { section: "overview", description: "Get quick summary of POC building approach" },
+            { section: "framework", description: "Get the 6-section framework details" },
+            { page_type: "architecture", description: "Get detailed guidance for architecture page" },
+            { section: "branding", description: "Get AntiGravity color/font extraction guidance" }
+          ]
+        }
       ]
     },
 
@@ -213,7 +240,9 @@ export async function GET() {
       "Specify domain_focus for industry-specific guidance",
       "Use list_vishkar_agents with agent_type filter to discover specialists",
       "Get SDLC guidance for phase-specific best practices",
-      "Use get_mcp_ecosystem_guide to understand all available MCPs"
+      "Use get_mcp_ecosystem_guide to understand all available MCPs",
+      "Use get_poc_building_guide for POC site structure and methodology",
+      "Extract client branding (colors, fonts) using AntiGravity before starting POC"
     ],
 
     related_endpoints: {
