@@ -238,7 +238,7 @@ const MCP_ECOSYSTEM = {
 const TOOLS = [
   {
     name: 'get_started',
-    description: '🚀 START HERE - Call this first! Complete onboarding guide for the VISHKAR MCP ecosystem. Returns everything you need: all MCPs and their tools, 13-step autonomous SDLC, 38 VISHKAR agents, authentication flow, and how to use each service. One call to understand the entire ecosystem.',
+    description: '📋 Enhanced Context onboarding - SDLC guidance, VISHKAR agents, POC building. NOTE: For ecosystem overview and registration, use Project Registry MCP (https://project-registry-henna.vercel.app/api/mcp) which requires no auth.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -252,7 +252,7 @@ const TOOLS = [
   },
   {
     name: 'get_mcp_ecosystem_guide',
-    description: 'Get comprehensive guide about all MCPs in the ecosystem - what they are, where they are deployed (Vercel/Docker), how to use them, authentication flow, documentation links, and usage examples. Perfect for understanding the MCP landscape.',
+    description: 'Detailed MCP information. NOTE: For no-auth ecosystem overview, use Project Registry MCP instead (https://project-registry-henna.vercel.app/api/mcp → get_started).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -486,116 +486,68 @@ const TOOLS = [
   }
 ];
 
-// Handler for Get Started - Complete onboarding guide
+// Handler for Get Started - Enhanced Context specific onboarding
 function handleGetStarted(args: { include_examples?: boolean }) {
   const includeExamples = args.include_examples !== false;
 
   const onboarding = {
-    welcome: {
-      message: "Welcome to the VISHKAR MCP Ecosystem!",
-      description: "This is your complete guide to all Model Context Protocol servers, tools, and workflows available in the VISHKAR ecosystem.",
-      call_to_action: "Use this information to understand what's available and how to integrate with each service."
+    note: {
+      important: "For ecosystem overview WITHOUT authentication, use Project Registry MCP",
+      entry_point: "POST https://project-registry-henna.vercel.app/api/mcp",
+      call: { tool: "get_started", arguments: {} },
+      why: "Project Registry requires no auth and is the true entry point"
     },
 
-    quick_start: {
-      steps: [
-        {
-          step: 1,
-          action: "Register your project",
-          endpoint: "POST https://project-registry-henna.vercel.app/api/projects/register",
-          details: "Provide your Jira/Confluence/GitHub credentials to get an API key"
-        },
-        {
-          step: 2,
-          action: "Save your API key",
-          details: "You'll receive a key like 'pk_xxx...' - use this for all MCP calls"
-        },
-        {
-          step: 3,
-          action: "Call any MCP",
-          details: "Use your API key as Bearer token (Authorization header) or X-API-Key header"
-        }
-      ]
+    this_mcp: {
+      name: "Enhanced Context MCP",
+      purpose: "Specialized tools for SDLC guidance, VISHKAR agents, and POC building",
+      requires_auth: true,
+      auth_header: "X-API-Key: {your_api_key}"
     },
 
-    mcp_ecosystem: {
-      total_mcps: 6,
-      cloud_hosted: 5,
-      local_docker: 1,
-      services: [
-        {
-          name: "Project Registry",
-          url: "https://project-registry-henna.vercel.app",
-          purpose: "Central credential management & API keys",
-          key_tools: ["register", "get_project", "validate_token"],
-          auth: "None required for registration"
-        },
-        {
-          name: "Enhanced Context MCP",
-          url: "https://enhanced-context-mcp.vercel.app",
-          purpose: "Ecosystem guide, VISHKAR agents, SDLC guidance, POC building",
-          key_tools: ["get_started", "get_mcp_ecosystem_guide", "get_sdlc_guidance", "get_poc_building_guide", "list_vishkar_agents", "load_enhanced_context"],
-          auth: "X-API-Key header"
-        },
-        {
-          name: "JIRA MCP",
-          url: "https://jira-mcp-pi.vercel.app",
-          purpose: "Complete Jira integration - issues, boards, sprints, worklogs",
-          key_tools: ["search_issues", "create_issue", "update_issue", "add_comment", "log_work", "transition_issue", "link_story_to_epic"],
-          auth: "Bearer token",
-          note: "Supports Markdown - auto-converts to ADF"
-        },
-        {
-          name: "Confluence MCP",
-          url: "https://confluence-mcp-six.vercel.app",
-          purpose: "Documentation management - pages, spaces, templates",
-          key_tools: ["create_page", "update_page", "search", "get_spaces", "upload_document"],
-          auth: "Bearer token",
-          note: "Uses XHTML storage format (not Markdown)"
-        },
-        {
-          name: "Story Crafter MCP",
-          url: "https://storycrafter-mcp.vercel.app",
-          purpose: "AI-powered backlog generation - Epics & User Stories",
-          key_tools: ["generate_epics", "generate_stories", "regenerate_epic", "regenerate_story"],
-          auth: "X-API-Key header",
-          note: "Requires AI provider config (OpenAI/Anthropic)"
-        },
-        {
-          name: "PR-Agent MCP",
-          url: "http://localhost:8188",
-          purpose: "AI-powered code review and PR analysis",
-          key_tools: ["pr_review", "pr_describe", "pr_improve", "pr_analyze"],
-          auth: "Environment variables",
-          note: "Runs locally in Docker"
-        }
-      ]
+    available_tools: {
+      sdlc: {
+        tool: "get_sdlc_guidance",
+        description: "13-step autonomous SDLC with agent mappings and MCP integration",
+        sections: ["overview", "steps", "step", "agents", "mcp_servers", "handoff", "escalation", "tools_by_step", "full"]
+      },
+      agents: {
+        tool: "list_vishkar_agents",
+        description: "38 VISHKAR agents - 32 technical specialists + 6 domain experts",
+        filter_by: "agent_type: all | technical | domain_expert"
+      },
+      poc_building: {
+        tool: "get_poc_building_guide",
+        description: "QIP methodology for building interactive POC sites",
+        sections: ["overview", "framework", "methodology", "layouts", "templates", "ui_patterns", "branding", "checklist", "full"]
+      },
+      context_loading: {
+        tool: "load_enhanced_context",
+        description: "Intent-based context loading with smart selection",
+        parameters: ["query", "task_intent", "scope", "complexity", "domain_focus"]
+      }
     },
 
     sdlc_overview: {
       name: "VISHKAR 13-Step Autonomous SDLC",
-      description: "Agent-driven software development lifecycle with quality gates and MCP integration",
-      quality_thresholds: {
-        minimum_quality_score: "7/10",
-        test_coverage: "90%",
-        philosophy: "Agents are autonomous but quality-gated"
-      },
+      description: "Agent-driven software development lifecycle with quality gates",
+      quality_thresholds: { minimum_score: "7/10", test_coverage: "90%" },
       steps_summary: [
-        { step: 1, name: "Project Initialization", owner: "pm_agent", mcp: "Enhanced Context" },
-        { step: 2, name: "Requirements Gathering", owner: "pm_agent", mcp: "Confluence" },
-        { step: 3, name: "Epic & Story Creation", owner: "pm_agent", mcp: "Story Crafter + JIRA" },
-        { step: 4, name: "Technical Design", owner: "dev_agent", mcp: "Enhanced Context" },
-        { step: 5, name: "Sprint Planning", owner: "pm_agent", mcp: "JIRA" },
-        { step: 6, name: "Implementation", owner: "dev_agent", mcp: "GitHub + Enhanced Context" },
-        { step: 7, name: "Unit Testing", owner: "qa_agent", mcp: "Test frameworks" },
-        { step: 8, name: "PR Review (3-Phase)", owner: "review_agent", mcp: "PR-Agent (Docker)" },
-        { step: 9, name: "Integration Testing", owner: "qa_agent", mcp: "Test frameworks" },
-        { step: 10, name: "Documentation", owner: "doc_agent", mcp: "Confluence" },
-        { step: 11, name: "Deployment", owner: "dev_agent", mcp: "CI/CD" },
-        { step: 12, name: "Verification", owner: "qa_agent", mcp: "Monitoring" },
-        { step: 13, name: "Handoff & Closure", owner: "pm_agent", mcp: "JIRA + Confluence" }
+        { step: 1, name: "Project Initialization", owner: "pm_agent" },
+        { step: 2, name: "Requirements Gathering", owner: "pm_agent" },
+        { step: 3, name: "Epic & Story Creation", owner: "pm_agent" },
+        { step: 4, name: "Technical Design", owner: "dev_agent" },
+        { step: 5, name: "Sprint Planning", owner: "pm_agent" },
+        { step: 6, name: "Implementation", owner: "dev_agent" },
+        { step: 7, name: "Unit Testing", owner: "qa_agent" },
+        { step: 8, name: "PR Review (3-Phase)", owner: "review_agent" },
+        { step: 9, name: "Integration Testing", owner: "qa_agent" },
+        { step: 10, name: "Documentation", owner: "doc_agent" },
+        { step: 11, name: "Deployment", owner: "dev_agent" },
+        { step: 12, name: "Verification", owner: "qa_agent" },
+        { step: 13, name: "Handoff & Closure", owner: "pm_agent" }
       ],
-      get_full_details: "Call get_sdlc_guidance tool for complete step details"
+      get_full_details: "Call get_sdlc_guidance with section='full'"
     },
 
     vishkar_agents: {
@@ -603,21 +555,17 @@ function handleGetStarted(args: { include_examples?: boolean }) {
       technical_agents: 32,
       domain_experts: 6,
       categories: {
-        technical: [
-          "backend-engineer", "frontend-developer", "security-auditor", "cloud-architect",
-          "devops-engineer", "database-specialist", "api-designer", "test-automator",
-          "performance-engineer", "mobile-developer", "ml-engineer", "data-engineer"
-        ],
+        technical: ["backend-engineer", "frontend-developer", "security-auditor", "cloud-architect", "devops-engineer", "database-specialist", "api-designer", "test-automator", "performance-engineer", "mobile-developer", "ml-engineer", "data-engineer"],
         domain_experts: [
           { name: "e-commerce-specialist", focus: "Cart, payments, checkout" },
-          { name: "healthcare-specialist", focus: "HIPAA, EHR, clinical workflows" },
-          { name: "fintech-specialist", focus: "PCI-DSS, KYC/AML, payments" },
-          { name: "cx-design-specialist", focus: "Customer journey, UX research" },
-          { name: "privacy-specialist", focus: "GDPR, CCPA, data protection" },
+          { name: "healthcare-specialist", focus: "HIPAA, EHR, clinical" },
+          { name: "fintech-specialist", focus: "PCI-DSS, KYC/AML" },
+          { name: "cx-design-specialist", focus: "Customer journey, UX" },
+          { name: "privacy-specialist", focus: "GDPR, CCPA" },
           { name: "supply-chain-specialist", focus: "Logistics, inventory" }
         ]
       },
-      get_full_list: "Call list_vishkar_agents tool for complete agent profiles"
+      get_full_list: "Call list_vishkar_agents"
     },
 
     poc_building: {
@@ -625,42 +573,21 @@ function handleGetStarted(args: { include_examples?: boolean }) {
       framework: "6-section POC structure",
       sections: ["Questions", "Architecture", "Delivery (WBS)", "Risks", "North Star", "Demo"],
       branding: "Use AntiGravity tool to extract client colors/fonts",
-      get_full_guide: "Call get_poc_building_guide tool for complete methodology"
+      get_full_guide: "Call get_poc_building_guide"
     },
 
-    available_tools: {
-      this_mcp: [
-        { tool: "get_started", purpose: "This onboarding guide (you're here!)" },
-        { tool: "get_mcp_ecosystem_guide", purpose: "Deep dive into all MCPs" },
-        { tool: "get_sdlc_guidance", purpose: "13-step SDLC with agent mappings" },
-        { tool: "get_poc_building_guide", purpose: "POC methodology and templates" },
-        { tool: "list_vishkar_agents", purpose: "Browse all 38 agents" },
-        { tool: "load_vishkar_agent", purpose: "Load specific agent profile" },
-        { tool: "load_enhanced_context", purpose: "Intent-based context loading" }
-      ],
-      other_mcps: {
-        jira: "26 tools - issues, boards, sprints, worklogs, transitions",
-        confluence: "32 tools - pages, spaces, templates, macros, attachments",
-        story_crafter: "4 tools - epic/story generation and regeneration",
-        pr_agent: "10 tools - PR review, describe, improve, security scan"
-      }
-    },
-
-    howto_endpoints: {
-      description: "Each MCP has a /api/howto endpoint for detailed documentation",
-      endpoints: [
-        "https://project-registry-henna.vercel.app/api/howto",
-        "https://enhanced-context-mcp.vercel.app/api/howto",
-        "https://jira-mcp-pi.vercel.app/api/howto",
-        "https://confluence-mcp-six.vercel.app/api/howto",
-        "https://storycrafter-mcp.vercel.app/api/howto"
-      ]
+    mcp_ecosystem_summary: {
+      total_mcps: 6,
+      entry_point: "Project Registry (no auth required)",
+      this_mcp: "Enhanced Context (auth required)",
+      other_mcps: ["JIRA MCP", "Confluence MCP", "Story Crafter MCP", "PR-Agent MCP (Docker)"],
+      for_full_ecosystem_guide: "Use Project Registry MCP → get_started (no auth needed)"
     },
 
     next_steps: [
-      "1. Register at Project Registry if you haven't already",
-      "2. Call get_sdlc_guidance for your development workflow",
-      "3. Call list_vishkar_agents to find the right agent for your task",
+      "1. Call get_sdlc_guidance for development workflow",
+      "2. Call list_vishkar_agents to find the right agent",
+      "3. Call get_poc_building_guide for POC structure",
       "4. Use the specific MCP for your task (JIRA, Confluence, etc.)"
     ]
   };

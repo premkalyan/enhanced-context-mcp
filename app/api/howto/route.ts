@@ -11,10 +11,17 @@ export async function GET() {
     version: "1.6.0",
     endpoint: "https://enhanced-context-mcp.vercel.app/api/mcp",
 
-    start_here: {
-      tool: "get_started",
-      description: "Call this tool first to get complete ecosystem onboarding",
-      what_you_get: "All MCPs, tools, 13-step SDLC, 38 agents, auth flow, examples"
+    entry_point: {
+      note: "For ecosystem overview WITHOUT auth, use Project Registry MCP first",
+      project_registry: "POST https://project-registry-henna.vercel.app/api/mcp",
+      call: { tool: "get_started", arguments: {} },
+      why: "Project Registry requires no auth - it's the true entry point"
+    },
+
+    this_mcp: {
+      purpose: "Specialized tools: SDLC guidance, VISHKAR agents, POC building",
+      requires_auth: true,
+      tools: ["get_sdlc_guidance", "get_poc_building_guide", "list_vishkar_agents", "load_enhanced_context"]
     },
 
     authentication: {
