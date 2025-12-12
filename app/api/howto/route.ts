@@ -8,8 +8,14 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const howto = {
     service: "Enhanced Context MCP",
-    version: "1.5.0",
+    version: "1.6.0",
     endpoint: "https://enhanced-context-mcp.vercel.app/api/mcp",
+
+    start_here: {
+      tool: "get_started",
+      description: "Call this tool first to get complete ecosystem onboarding",
+      what_you_get: "All MCPs, tools, 13-step SDLC, 38 agents, auth flow, examples"
+    },
 
     authentication: {
       method: "Bearer Token",
@@ -28,17 +34,45 @@ export async function GET() {
     },
 
     overview: {
-      description: "Enhanced Context MCP provides intelligent context loading for AI agents with VISHKAR agent discovery, SDLC guidance, and intent-based context selection.",
+      description: "Enhanced Context MCP is the central hub for the VISHKAR MCP ecosystem. Call 'get_started' for complete onboarding.",
       key_features: [
-        "Intent-based context loading - automatically select relevant context based on query intent",
+        "🚀 get_started tool - One call to understand the entire ecosystem",
+        "6 MCPs documented - Project Registry, Enhanced Context, JIRA, Confluence, Story Crafter, PR-Agent",
+        "13-step autonomous SDLC - Agent-driven development with quality gates",
         "38 VISHKAR agents - 32 technical specialists + 6 domain experts",
-        "SDLC phase-specific guidance and best practices",
-        "Multi-agent workflow support with agent recommendations",
-        "Full MCP ecosystem documentation"
+        "POC building guide - QIP methodology with templates",
+        "Intent-based context loading - Smart context selection"
       ]
     },
 
     tools: {
+      onboarding: [
+        {
+          name: "get_started",
+          description: "🚀 START HERE - Complete onboarding guide for the VISHKAR MCP ecosystem",
+          call_this_first: true,
+          parameters: {
+            include_examples: "boolean (default: true) - Include usage examples"
+          },
+          returns: {
+            welcome: "Welcome message and overview",
+            quick_start: "3-step guide to get started",
+            mcp_ecosystem: "All 6 MCPs with endpoints, tools, and auth requirements",
+            sdlc_overview: "13-step autonomous SDLC summary with agent mappings",
+            vishkar_agents: "38 agents overview (32 technical + 6 domain experts)",
+            poc_building: "POC methodology summary",
+            available_tools: "All tools in this MCP and others",
+            howto_endpoints: "Documentation endpoints for all MCPs",
+            next_steps: "Recommended actions",
+            examples: "Usage examples (if include_examples=true)"
+          },
+          example_request: {
+            tool: "get_started",
+            arguments: {}
+          },
+          why_call_first: "This single call gives you everything needed to understand and use the entire VISHKAR MCP ecosystem"
+        }
+      ],
       context_loading: [
         {
           name: "load_enhanced_context",
@@ -236,11 +270,12 @@ export async function GET() {
     },
 
     tips: [
+      "🚀 FIRST: Call 'get_started' to get complete ecosystem onboarding in one call",
       "Use task_intent to get more focused agent recommendations",
       "Specify domain_focus for industry-specific guidance",
       "Use list_vishkar_agents with agent_type filter to discover specialists",
       "Get SDLC guidance for phase-specific best practices",
-      "Use get_mcp_ecosystem_guide to understand all available MCPs",
+      "Use get_mcp_ecosystem_guide for deep-dive into specific MCPs",
       "Use get_poc_building_guide for POC site structure and methodology",
       "Extract client branding (colors, fonts) using AntiGravity before starting POC"
     ],
