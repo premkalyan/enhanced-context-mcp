@@ -251,25 +251,6 @@ const TOOLS = [
     }
   },
   {
-    name: 'get_mcp_ecosystem_guide',
-    description: 'Detailed MCP information. NOTE: For no-auth ecosystem overview, use Project Registry MCP instead (https://project-registry-henna.vercel.app/api/mcp → get_started).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        section: {
-          type: 'string',
-          enum: ['overview', 'vercel_mcps', 'docker_mcps', 'all_mcps', 'authentication', 'usage_examples', 'quick_reference', 'troubleshooting', 'full'],
-          description: 'Which section to return: overview (architecture), vercel_mcps (cloud-deployed), docker_mcps (local), all_mcps (both), authentication (how to get API keys), usage_examples (code samples), quick_reference (URLs), troubleshooting (common issues), full (everything)'
-        },
-        mcp_name: {
-          type: 'string',
-          description: 'Get details about a specific MCP by name (e.g., "JIRA MCP", "Confluence MCP", "PR-Agent MCP")'
-        }
-      },
-      required: []
-    }
-  },
-  {
     name: 'load_enhanced_context',
     description: 'Load global WAMA contexts, templates, and project-specific rules for enhanced MCP processing. Supports TWO modes: (1) Natural Language: Just provide task_statement describing what you want to do, and the AI will intelligently infer contexts, templates, and guidance. (2) Structured: Provide explicit query_type, task_intent, scope, etc. Includes 13-step SDLC guidance and task-specific quality checks.',
     inputSchema: {
@@ -623,93 +604,6 @@ function handleGetStarted(args: { include_examples?: boolean }) {
   }
 
   return onboarding;
-}
-
-// Handler for MCP Ecosystem Guide
-function handleMcpEcosystemGuide(args: { section?: string; mcp_name?: string }) {
-  const { section = 'full', mcp_name } = args;
-
-  // If specific MCP requested, find and return it
-  if (mcp_name) {
-    const allMcps = [...MCP_ECOSYSTEM.mcps.vercel_deployed, ...MCP_ECOSYSTEM.mcps.docker_local];
-    const found = allMcps.find(mcp =>
-      mcp.name.toLowerCase().includes(mcp_name.toLowerCase())
-    );
-    if (found) {
-      return {
-        mcp: found,
-        usage_tip: found.auth_required
-          ? `This MCP requires authentication. ${found.auth_type}`
-          : "This MCP does not require authentication."
-      };
-    }
-    return { error: `MCP "${mcp_name}" not found. Available MCPs: ${allMcps.map(m => m.name).join(', ')}` };
-  }
-
-  // Return based on section
-  switch (section) {
-    case 'overview':
-      return {
-        ...MCP_ECOSYSTEM.overview,
-        total_mcps: MCP_ECOSYSTEM.mcps.vercel_deployed.length + MCP_ECOSYSTEM.mcps.docker_local.length,
-        vercel_count: MCP_ECOSYSTEM.mcps.vercel_deployed.length,
-        docker_count: MCP_ECOSYSTEM.mcps.docker_local.length
-      };
-
-    case 'vercel_mcps':
-      return {
-        deployment: 'Vercel (Cloud)',
-        description: 'These MCPs are deployed on Vercel and accessible from anywhere via HTTPS',
-        mcps: MCP_ECOSYSTEM.mcps.vercel_deployed
-      };
-
-    case 'docker_mcps':
-      return {
-        deployment: 'Docker (Local)',
-        description: 'These MCPs run locally in Docker containers. Start them with docker-compose.',
-        mcps: MCP_ECOSYSTEM.mcps.docker_local
-      };
-
-    case 'all_mcps':
-      return {
-        vercel_deployed: MCP_ECOSYSTEM.mcps.vercel_deployed,
-        docker_local: MCP_ECOSYSTEM.mcps.docker_local,
-        total: MCP_ECOSYSTEM.mcps.vercel_deployed.length + MCP_ECOSYSTEM.mcps.docker_local.length
-      };
-
-    case 'authentication':
-      return {
-        flow: MCP_ECOSYSTEM.overview.architecture.authentication_flow,
-        project_registry: MCP_ECOSYSTEM.overview.architecture.project_registry,
-        registration_example: MCP_ECOSYSTEM.usage_examples.project_registration
-      };
-
-    case 'usage_examples':
-      return MCP_ECOSYSTEM.usage_examples;
-
-    case 'quick_reference':
-      return MCP_ECOSYSTEM.quick_reference;
-
-    case 'troubleshooting':
-      return MCP_ECOSYSTEM.troubleshooting;
-
-    case 'full':
-    default:
-      return {
-        ...MCP_ECOSYSTEM,
-        summary: {
-          total_mcps: MCP_ECOSYSTEM.mcps.vercel_deployed.length + MCP_ECOSYSTEM.mcps.docker_local.length,
-          vercel_deployed: MCP_ECOSYSTEM.mcps.vercel_deployed.map(m => m.name),
-          docker_local: MCP_ECOSYSTEM.mcps.docker_local.map(m => m.name),
-          getting_started: [
-            "1. Go to Project Registry: https://project-registry-henna.vercel.app/dashboard",
-            "2. Register your project with tool credentials (Jira, Confluence, etc.)",
-            "3. Copy your API key (pk_xxx...)",
-            "4. Use the API key as Bearer token when calling MCPs"
-          ]
-        }
-      };
-  }
 }
 
 // Handler for SDLC Guidance - VISHKAR 13-Step Autonomous SDLC
@@ -1205,10 +1099,6 @@ export async function POST(request: NextRequest) {
     switch (tool) {
       case 'get_started':
         result = handleGetStarted(args || {});
-        break;
-
-      case 'get_mcp_ecosystem_guide':
-        result = handleMcpEcosystemGuide(args || {});
         break;
 
       case 'get_sdlc_guidance':
