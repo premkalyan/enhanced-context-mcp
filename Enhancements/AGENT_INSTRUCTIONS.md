@@ -102,8 +102,8 @@ When reviewing code, verify:
 
 If \`.standards/\` directory doesn't exist, clone from VISHKAR:
 \`\`\`bash
-git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils
-cp -r vishkar-utils/.standards .standards/
+git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils
+cp -r .vishkar-utils/.standards .standards/
 \`\`\`
 `;
 
@@ -204,8 +204,8 @@ function handleToolConfiguration(args: { tool?: string; project_type?: string; i
       configs,
       project_type,
       include_standards,
-      clone_command: 'git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils',
-      standards_location: 'vishkar-utils/.standards/'
+      clone_command: 'git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils',
+      standards_location: '.vishkar-utils/.standards/'
     };
   }
 
@@ -217,8 +217,8 @@ function handleToolConfiguration(args: { tool?: string; project_type?: string; i
   return {
     ...config,
     project_type,
-    clone_command: 'git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils',
-    standards_location: 'vishkar-utils/.standards/',
+    clone_command: 'git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils',
+    standards_location: '.vishkar-utils/.standards/',
     other_tools: Object.keys(configs)
       .filter(t => t !== tool)
       .reduce((acc, t) => ({ ...acc, [t]: { filename: configs[t].filename, available: true } }), {})
@@ -240,15 +240,15 @@ quick_start: {
   // ... existing steps ...
   step_4: {
     action: 'Clone VISHKAR utilities',
-    command: 'git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils',
+    command: 'git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils',
     details: 'Contains engineering standards (.standards/) and helper scripts (scripts/)'
   }
 },
 utilities: {
-  clone_command: 'git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils',
-  standards: 'vishkar-utils/.standards/*.md - Engineering standards for code quality',
-  helper_scripts: 'vishkar-utils/scripts/mcp/*.sh - Shell scripts for calling MCPs',
-  setup_scripts: 'vishkar-utils/scripts/setup/*.sh - Project setup utilities'
+  clone_command: 'git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils',
+  standards: '.vishkar-utils/.standards/*.md - Engineering standards for code quality',
+  helper_scripts: '.vishkar-utils/scripts/mcp/*.sh - Shell scripts for calling MCPs',
+  setup_scripts: '.vishkar-utils/scripts/setup/*.sh - Project setup utilities'
 },
 tools_available: {
   get_tool_configuration: 'Get CLAUDE.md, .cursorrules, .aider.conf.yml for AI tools',
