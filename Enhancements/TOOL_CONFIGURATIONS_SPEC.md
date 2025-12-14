@@ -101,9 +101,10 @@ curl -X POST https://enhanced-context-mcp.vercel.app/api/mcp \
   -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_engineering_standards","arguments":{"format":"files"}},"id":1}'
 ```
 
-Or use the setup script:
+Or clone the utils-only branch:
 ```bash
-./vishkar-utils/scripts/setup/init_standards.sh
+git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils
+cp -r .vishkar-utils/.standards .standards/
 ```
 ```
 
