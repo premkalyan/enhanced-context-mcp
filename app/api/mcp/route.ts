@@ -647,10 +647,10 @@ function handleGetStarted(args: { include_examples?: boolean }) {
         setup_scripts: "scripts/setup/*.sh - Project setup scripts"
       },
       usage: {
-        clone: "git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils",
+        clone: "git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils",
         set_api_key: "export VISHKAR_API_KEY=pk_xxx",
-        make_executable: "chmod +x vishkar-utils/scripts/mcp/*.sh",
-        example: "./vishkar-utils/scripts/mcp/jira.sh '{\"tool\":\"search_issues\",\"arguments\":{\"jql\":\"project=PROJ\"}}'"
+        make_executable: "chmod +x .vishkar-utils/scripts/mcp/*.sh",
+        example: "./.vishkar-utils/scripts/mcp/jira.sh '{\"tool\":\"search_issues\",\"arguments\":{\"jql\":\"project=PROJ\"}}'"
       },
       note: "Standards are also served via get_engineering_standards tool for programmatic access"
     },
@@ -2530,10 +2530,10 @@ curl -X POST https://enhanced-context-mcp.vercel.app/api/mcp \\
   -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_engineering_standards","arguments":{"format":"files"}},"id":1}'
 \`\`\`
 
-Or clone the repository:
+Or clone the utils-only branch:
 \`\`\`bash
-git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils
-cp -r vishkar-utils/.standards/ .standards/
+git clone -b utils-only https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils
+cp -r .vishkar-utils/.standards/ .standards/
 \`\`\`
 `;
 
