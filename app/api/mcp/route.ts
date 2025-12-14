@@ -487,6 +487,26 @@ const TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'get_engineering_standards',
+    description: 'Retrieve engineering standards and best practices templates for Python, FastAPI, Database, Testing, Frontend, Security, and Code Quality. Use this to initialize project standards or reference during development. LLMs should read these before implementation to follow established patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['overview', 'python', 'fastapi', 'database', 'testing', 'frontend', 'security', 'code_quality', 'all'],
+          description: 'Specific section to retrieve: overview (principles), python (backend conventions), fastapi (API patterns), database (SQLAlchemy/Alembic), testing (pytest patterns), frontend (Next.js/React), security (OWASP), code_quality (SOLID/DRY), all (everything)'
+        },
+        format: {
+          type: 'string',
+          enum: ['markdown', 'files', 'json'],
+          description: 'Output format: markdown (readable documentation), files (file contents for .standards/ directory), json (structured data). Default: markdown'
+        }
+      },
+      required: []
+    }
   }
 ];
 
@@ -520,6 +540,13 @@ function handleGetStarted(args: { include_examples?: boolean }) {
         description: "Get the right specialist agent(s) for reviewing specific files - 'Give me the right architect'",
         parameters: ["file_paths", "file_path", "include_agent_details"],
         usage: "Pass file paths to get matched agents for Step 6 (Tech-Stack Review)"
+      },
+      engineering_standards: {
+        tool: "get_engineering_standards",
+        description: "Comprehensive coding standards for Python, FastAPI, Database, Testing, Frontend, Security, Code Quality",
+        sections: ["overview", "python", "fastapi", "database", "testing", "frontend", "security", "code_quality", "all"],
+        formats: ["markdown", "files", "json"],
+        usage: "Fetch with format='files' to create .standards/ directory, LLMs read before implementation"
       },
       agents: {
         tool: "list_vishkar_agents",
@@ -1347,10 +1374,568 @@ async function handleContextualAgent(args: { file_paths?: string[]; file_path?: 
   return response;
 }
 
+// Handler for Engineering Standards - Comprehensive coding standards and best practices
+function handleEngineeringStandards(args: { section?: string; format?: string }) {
+  const { section = 'all', format = 'markdown' } = args;
+
+  // Engineering Standards v1.0.0 - Comprehensive standards based on spec
+  const STANDARDS = {
+    version: "1.0.0",
+    last_updated: "2024-12-14",
+
+    overview: {
+      purpose: "Engineering standards ensure consistency, quality, and efficiency across all VISHKAR projects",
+      principles: [
+        { name: "Explicit over Implicit", description: "Be clear about intentions in code" },
+        { name: "Simple over Complex", description: "Prefer straightforward solutions" },
+        { name: "Consistent over Creative", description: "Follow established patterns" },
+        { name: "Secure by Default", description: "Security is not optional" },
+        { name: "Test Everything", description: "Untested code is broken code" }
+      ],
+      scope: {
+        backend: "Python 3.12+, FastAPI 0.115+, SQLAlchemy 2.0+",
+        frontend: "Next.js 14/15, React 18+, TypeScript 5+",
+        database: "PostgreSQL 16+, pgvector, Alembic",
+        testing: "pytest, pytest-asyncio, Jest, Playwright",
+        infrastructure: "Docker, Redis, Kubernetes"
+      },
+      distribution_model: {
+        description: "Fetch standards from Enhanced Context MCP → Store in .standards/ → Team customizes → LLM reads before implementation",
+        fetch_command: "get_engineering_standards with format='files'",
+        local_storage: ".standards/",
+        llm_usage: "Read .standards/ at start of each implementation task"
+      }
+    },
+
+    python: {
+      title: "Python Backend Standards",
+      version: "3.12+",
+      sections: {
+        environment: {
+          minimum_version: "3.12",
+          virtual_environment: "venv or poetry",
+          package_manager: "pip or poetry"
+        },
+        import_ordering: {
+          description: "Use isort with these groups",
+          order: [
+            "1. Standard library (import asyncio, from datetime import datetime)",
+            "2. Third-party packages (from fastapi import FastAPI, from pydantic import BaseModel)",
+            "3. Local application (from src.core.config import settings)"
+          ]
+        },
+        type_hints: {
+          rule: "Required everywhere - functions, methods, class attributes",
+          examples: {
+            good: "def calculate_total(items: list[Item], tax_rate: float) -> Decimal: ...",
+            bad: "def calculate_total(items, tax_rate):  # No type hints"
+          }
+        },
+        async_patterns: {
+          critical_rule: "Never block the event loop in async functions",
+          examples: {
+            good: "async with httpx.AsyncClient() as client: response = await client.get(url)",
+            bad: "response = requests.get(url)  # BLOCKS EVENT LOOP!",
+            workaround: "Use loop.run_in_executor() for CPU-bound sync code"
+          }
+        },
+        error_handling: {
+          pattern: "Use specific exceptions, log server-side, return sanitized messages to clients",
+          example: "raise HTTPException(status_code=404, detail='Customer not found')  # Generic to client"
+        },
+        naming: {
+          modules: "snake_case (customer_service.py)",
+          classes: "PascalCase (CustomerService)",
+          functions: "snake_case (get_customer_by_id)",
+          variables: "snake_case (customer_name)",
+          constants: "UPPER_SNAKE (MAX_RETRY_COUNT)",
+          private: "_prefix (_internal_method)"
+        }
+      }
+    },
+
+    fastapi: {
+      title: "FastAPI Standards",
+      sections: {
+        router_organization: {
+          pattern: "src/api/v1/routes/{resource}.py",
+          example: {
+            prefix: "/customers",
+            tags: ["Customers"],
+            decorators: "@router.get('/{customer_id}', response_model=CustomerResponse, summary='Get Customer')"
+          }
+        },
+        dependency_injection: {
+          database: "async def get_db() -> AsyncGenerator[AsyncSession, None]: yield session",
+          service: "def get_customer_service(db: AsyncSession = Depends(get_db)) -> CustomerService",
+          auth: "async def get_current_user(token: str = Depends(oauth2_scheme)) -> User"
+        },
+        response_models: {
+          rule: "Always use response_model for type safety and documentation",
+          pattern: {
+            base: "class CustomerBase(BaseModel): name: str; email: str",
+            create: "class CustomerCreate(CustomerBase): pass",
+            response: "class CustomerResponse(CustomerBase): model_config = ConfigDict(from_attributes=True); id: UUID; created_at: datetime"
+          }
+        },
+        error_handling: {
+          validation: "Let Pydantic handle (422 automatic)",
+          business_logic: "HTTPException(status_code=400, detail='Cannot delete customer with active orders')",
+          not_found: "HTTPException(status_code=404, detail='Resource not found')",
+          auth: "HTTPException(status_code=401, detail='Invalid credentials', headers={'WWW-Authenticate': 'Bearer'})"
+        },
+        cors: {
+          critical: "NEVER use wildcards in production",
+          config: {
+            allow_origins: "settings.cors_origins_list (explicit list)",
+            allow_credentials: true,
+            allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers: ["Accept", "Content-Type", "Authorization", "X-API-Key", "X-Request-ID"]
+          }
+        }
+      }
+    },
+
+    database: {
+      title: "Database Standards (SQLAlchemy/Alembic)",
+      sections: {
+        model_base: {
+          critical: "Define naming convention for constraints - enables proper Alembic migrations",
+          naming_convention: {
+            ix: "ix_%(table_name)s_%(column_0_name)s",
+            uq: "uq_%(table_name)s_%(column_0_name)s",
+            ck: "ck_%(table_name)s_%(constraint_name)s",
+            fk: "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            pk: "pk_%(table_name)s"
+          },
+          mixins: ["TimestampMixin (created_at, updated_at)", "UUIDMixin (id as UUID primary key)"]
+        },
+        model_pattern: {
+          tablename: "__tablename__ = 'customers'",
+          required_fields: "name: Mapped[str] = mapped_column(String(255))",
+          optional_fields: "api_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)",
+          relationships: "templates: Mapped[list['Template']] = relationship(back_populates='customer', cascade='all, delete-orphan')"
+        },
+        alembic_migrations: {
+          naming: "YYYYMMDD_HHMM_description.py (e.g., 20241214_1030_add_customer_api_key.py)",
+          structure: "upgrade() and downgrade() functions",
+          rule: "Always include downgrade for rollback capability"
+        },
+        connection_pooling: {
+          critical: "Always use connection pooling in async applications",
+          config: {
+            poolclass: "AsyncAdaptedQueuePool",
+            pool_size: 5,
+            max_overflow: 10,
+            pool_timeout: 30,
+            pool_recycle: 1800,
+            pool_pre_ping: true
+          }
+        },
+        raw_sql: {
+          rule: "ALWAYS use text() wrapper for raw SQL",
+          good: "await conn.execute(text('SELECT 1'))",
+          bad: "await conn.execute('SELECT 1')  # SQLAlchemy 2.0 will warn/error"
+        }
+      }
+    },
+
+    testing: {
+      title: "Testing Standards",
+      sections: {
+        directory_structure: {
+          root: "tests/",
+          conftest: "tests/conftest.py (shared fixtures)",
+          unit: "tests/unit/ (no external deps, mocked)",
+          integration: "tests/integration/ (with DB/Redis)",
+          e2e: "tests/e2e/ (full stack)"
+        },
+        categorization: {
+          unit: { marker: "@pytest.mark.unit", dependencies: "None (mocked)", speed: "Fast" },
+          integration: { marker: "@pytest.mark.integration", dependencies: "DB, Redis", speed: "Medium" },
+          e2e: { marker: "@pytest.mark.e2e", dependencies: "Full stack", speed: "Slow" }
+        },
+        pytest_config: {
+          asyncio_mode: "auto",
+          asyncio_default_fixture_loop_scope: "function",
+          addopts: "-v --tb=short --strict-markers"
+        },
+        naming_convention: {
+          pattern: "test_<what>_<condition>_<expected_result>",
+          examples: [
+            "test_get_customer_with_valid_id_returns_customer",
+            "test_get_customer_with_invalid_id_returns_none",
+            "test_create_customer_with_duplicate_email_raises_error"
+          ]
+        },
+        mocking: {
+          async_mock: "session = AsyncMock(); session.execute = AsyncMock(return_value=MagicMock())",
+          patch: "@patch('src.services.external_api.fetch_data')"
+        },
+        coverage_threshold: 80
+      }
+    },
+
+    frontend: {
+      title: "Frontend Standards (Next.js/React/TypeScript)",
+      sections: {
+        app_router: {
+          layout: "src/app/layout.tsx - Root layout with html/body",
+          page: "src/app/page.tsx - Home page",
+          route_groups: "src/app/(auth)/ - Route groups with parentheses"
+        },
+        component_organization: {
+          ui: "src/components/ui/ - Base UI components (Button, Input)",
+          features: "src/components/features/ - Feature-specific components",
+          layouts: "src/components/layouts/ - Layout components (Header, Sidebar)"
+        },
+        server_vs_client: {
+          server: "Default - no directive, can fetch data directly",
+          client: "'use client' directive - for useState, useEffect, event handlers"
+        },
+        api_client: {
+          pattern: "Class-based ApiClient with request<T> method",
+          error_handling: "Throw ApiError on non-ok response",
+          methods: ["get<T>(endpoint)", "post<T>(endpoint, data)"]
+        },
+        typescript_config: {
+          target: "ES2022",
+          strict: true,
+          moduleResolution: "bundler",
+          paths: { "@/*": ["./src/*"] }
+        }
+      }
+    },
+
+    security: {
+      title: "Security Standards (OWASP API Top 10)",
+      sections: {
+        owasp_checklist: [
+          { risk: "API1: BOLA", mitigation: "Object-level authorization", implementation: "Check user owns resource before access" },
+          { risk: "API2: Broken Auth", mitigation: "Strong authentication", implementation: "OAuth 2.0 + JWT, MFA for sensitive ops" },
+          { risk: "API3: Object Property Level", mitigation: "Input/output filtering", implementation: "Pydantic schemas, explicit field selection" },
+          { risk: "API4: Unrestricted Resource", mitigation: "Rate limiting", implementation: "Redis-based rate limiter per user/IP" },
+          { risk: "API5: BFLA", mitigation: "Function-level authorization", implementation: "Role-based access control (RBAC)" },
+          { risk: "API6: Mass Assignment", mitigation: "Explicit schemas", implementation: "Separate Create/Update schemas" },
+          { risk: "API7: Security Misconfiguration", mitigation: "Secure defaults", implementation: "HTTPS, proper headers, no debug in prod" },
+          { risk: "API8: Injection", mitigation: "Input validation", implementation: "Parameterized queries, Pydantic validation" },
+          { risk: "API9: Improper Asset Management", mitigation: "API inventory", implementation: "Version all endpoints, deprecation policy" },
+          { risk: "API10: Unsafe Consumption", mitigation: "Third-party validation", implementation: "Validate all external API responses" }
+        ],
+        authentication: {
+          pattern: "OAuth2 + JWT",
+          dependency: "oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')",
+          validation: "jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])"
+        },
+        input_validation: {
+          tool: "Pydantic with field_validator",
+          example: "@field_validator('name') def validate_name(cls, v): if len(v) < 2: raise ValueError('...')"
+        },
+        secrets_management: {
+          rule: "NEVER hardcode secrets",
+          use: "Environment variables or secrets manager",
+          config: "pydantic_settings BaseSettings with env_file='.env'"
+        },
+        information_disclosure: {
+          rule: "Log details server-side, return generic messages to clients",
+          debug_info: "Only expose in development (settings.debug)"
+        }
+      }
+    },
+
+    code_quality: {
+      title: "Code Quality Standards",
+      sections: {
+        solid_principles: [
+          { principle: "Single Responsibility", description: "One class = one job", example: "CustomerService only handles customer logic" },
+          { principle: "Open/Closed", description: "Open for extension, closed for modification", example: "Use abstract base classes" },
+          { principle: "Liskov Substitution", description: "Subtypes must be substitutable", example: "Child classes don't break contracts" },
+          { principle: "Interface Segregation", description: "Many specific interfaces > one general", example: "Separate Reader and Writer protocols" },
+          { principle: "Dependency Inversion", description: "Depend on abstractions", example: "Inject dependencies via constructor" }
+        ],
+        dry: {
+          description: "Don't Repeat Yourself",
+          bad: "Duplicated version string in multiple schemas",
+          good: "Single settings.app_version used everywhere"
+        },
+        documentation: {
+          format: "Google-style docstrings",
+          required: ["Args", "Returns", "Raises", "Example (for complex functions)"]
+        },
+        linting: {
+          tool: "ruff",
+          config: {
+            line_length: 88,
+            target_version: "py312",
+            select: ["E", "W", "F", "I", "B", "C4", "UP", "ARG", "SIM"]
+          },
+          type_checking: "mypy with strict=true"
+        }
+      }
+    },
+
+    lessons_learned: {
+      title: "Lessons Learned Integration",
+      storage: {
+        findings: ".reviews/findings/{task_id}_findings.json",
+        lessons: ".reviews/lessons_learned.json"
+      },
+      schema: {
+        id: "LL-001",
+        category: "database | security | performance | ...",
+        severity: "critical | high | medium | low",
+        pattern: "What was done wrong",
+        problem: "Why it's a problem",
+        solution: "How to fix it",
+        source_task: "V1-49",
+        date_added: "2024-12-14"
+      },
+      llm_workflow: [
+        "1. Read .reviews/lessons_learned.json at start of task",
+        "2. Check if any lessons apply to current work",
+        "3. Avoid repeating documented mistakes",
+        "4. After review, add new lessons if discovered"
+      ]
+    },
+
+    directory_structure: {
+      backend: {
+        src: ["main.py", "api/v1/routes/", "core/config.py", "core/database.py", "models/", "schemas/", "services/", "utils/"],
+        tests: ["conftest.py", "unit/", "integration/", "e2e/"],
+        alembic: ["versions/", "env.py", "alembic.ini"],
+        config: ["requirements.txt", "requirements-dev.txt", "pytest.ini", "pyproject.toml"]
+      },
+      frontend: {
+        src: ["app/", "components/ui/", "components/features/", "lib/", "hooks/", "types/"],
+        config: ["package.json", "tsconfig.json", "next.config.js", "tailwind.config.js"],
+        tests: ["unit/", "integration/", "e2e/"]
+      },
+      standards: {
+        path: ".standards/",
+        files: ["README.md", "python.md", "fastapi.md", "database.md", "testing.md", "frontend.md", "security.md", "code_quality.md", "lessons_learned.json"]
+      }
+    }
+  };
+
+  // Generate file contents for .standards/ directory
+  const generateFileContents = () => {
+    return {
+      "README.md": `# Engineering Standards
+
+Version: ${STANDARDS.version}
+Last Updated: ${STANDARDS.last_updated}
+
+## Purpose
+${STANDARDS.overview.purpose}
+
+## Principles
+${STANDARDS.overview.principles.map(p => `- **${p.name}**: ${p.description}`).join('\n')}
+
+## Files
+- python.md - Python backend conventions
+- fastapi.md - FastAPI patterns
+- database.md - SQLAlchemy/Alembic standards
+- testing.md - pytest patterns
+- frontend.md - Next.js/React standards
+- security.md - OWASP checklist
+- code_quality.md - SOLID/DRY guidelines
+- lessons_learned.json - Project-specific learnings
+
+## Usage
+LLMs should read these files before implementation to follow established patterns.
+`,
+      "python.md": `# Python Backend Standards
+
+## Version: ${STANDARDS.python.version}+
+
+## Import Ordering
+${STANDARDS.python.sections.import_ordering.order.join('\n')}
+
+## Type Hints
+${STANDARDS.python.sections.type_hints.rule}
+
+Good: \`${STANDARDS.python.sections.type_hints.examples.good}\`
+
+## Async Patterns
+**CRITICAL**: ${STANDARDS.python.sections.async_patterns.critical_rule}
+
+## Naming Conventions
+| Element | Convention | Example |
+|---------|------------|---------|
+| Modules | snake_case | customer_service.py |
+| Classes | PascalCase | CustomerService |
+| Functions | snake_case | get_customer_by_id |
+| Constants | UPPER_SNAKE | MAX_RETRY_COUNT |
+`,
+      "fastapi.md": `# FastAPI Standards
+
+## Router Organization
+Pattern: \`${STANDARDS.fastapi.sections.router_organization.pattern}\`
+
+## Response Models
+Always use response_model for type safety and documentation.
+
+## CORS Configuration
+**CRITICAL**: ${STANDARDS.fastapi.sections.cors.critical}
+
+## Error Handling
+- Validation: Let Pydantic handle (422 automatic)
+- Business Logic: ${STANDARDS.fastapi.sections.error_handling.business_logic}
+- Not Found: ${STANDARDS.fastapi.sections.error_handling.not_found}
+`,
+      "database.md": `# Database Standards (SQLAlchemy/Alembic)
+
+## Naming Convention
+**CRITICAL**: Define naming convention for proper Alembic migrations
+
+## Connection Pooling
+**CRITICAL**: Always use connection pooling in async applications
+- pool_size: ${STANDARDS.database.sections.connection_pooling.config.pool_size}
+- max_overflow: ${STANDARDS.database.sections.connection_pooling.config.max_overflow}
+- pool_pre_ping: ${STANDARDS.database.sections.connection_pooling.config.pool_pre_ping}
+
+## Raw SQL
+${STANDARDS.database.sections.raw_sql.rule}
+`,
+      "testing.md": `# Testing Standards
+
+## Directory Structure
+- tests/unit/ - No external dependencies, mocked
+- tests/integration/ - With DB/Redis
+- tests/e2e/ - Full stack
+
+## Naming Convention
+Pattern: \`test_<what>_<condition>_<expected_result>\`
+
+## Coverage Threshold: ${STANDARDS.testing.sections.coverage_threshold}%
+`,
+      "frontend.md": `# Frontend Standards (Next.js/React/TypeScript)
+
+## App Router Conventions
+- layout.tsx - Root layout
+- page.tsx - Page component
+- Route groups - (auth)/ syntax
+
+## Server vs Client Components
+- Server: Default, can fetch data directly
+- Client: 'use client' directive for useState, useEffect
+
+## TypeScript Config
+- strict: true
+- target: ES2022
+`,
+      "security.md": `# Security Standards (OWASP API Top 10)
+
+${STANDARDS.security.sections.owasp_checklist.map(item => `## ${item.risk}
+- **Mitigation**: ${item.mitigation}
+- **Implementation**: ${item.implementation}
+`).join('\n')}
+
+## Secrets Management
+${STANDARDS.security.sections.secrets_management.rule}
+`,
+      "code_quality.md": `# Code Quality Standards
+
+## SOLID Principles
+${STANDARDS.code_quality.sections.solid_principles.map(p => `- **${p.principle}**: ${p.description}`).join('\n')}
+
+## DRY (Don't Repeat Yourself)
+${STANDARDS.code_quality.sections.dry.description}
+
+## Linting
+- Tool: ${STANDARDS.code_quality.sections.linting.tool}
+- Line length: ${STANDARDS.code_quality.sections.linting.config.line_length}
+`,
+      "lessons_learned.json": JSON.stringify({
+        schema_version: "1.0.0",
+        last_updated: new Date().toISOString(),
+        lessons: []
+      }, null, 2)
+    };
+  };
+
+  // Return based on section and format
+  const getSection = (sectionName: string) => {
+    switch (sectionName) {
+      case 'overview': return STANDARDS.overview;
+      case 'python': return STANDARDS.python;
+      case 'fastapi': return STANDARDS.fastapi;
+      case 'database': return STANDARDS.database;
+      case 'testing': return STANDARDS.testing;
+      case 'frontend': return STANDARDS.frontend;
+      case 'security': return STANDARDS.security;
+      case 'code_quality': return STANDARDS.code_quality;
+      case 'all': return STANDARDS;
+      default: return { error: `Unknown section: ${sectionName}. Valid sections: overview, python, fastapi, database, testing, frontend, security, code_quality, all` };
+    }
+  };
+
+  // Format the response
+  if (format === 'files') {
+    const files = generateFileContents();
+    if (section !== 'all') {
+      // Return specific file for the section
+      const fileMap: Record<string, string> = {
+        overview: 'README.md',
+        python: 'python.md',
+        fastapi: 'fastapi.md',
+        database: 'database.md',
+        testing: 'testing.md',
+        frontend: 'frontend.md',
+        security: 'security.md',
+        code_quality: 'code_quality.md'
+      };
+      const fileName = fileMap[section];
+      if (fileName && files[fileName as keyof typeof files]) {
+        return {
+          format: 'files',
+          section,
+          file: {
+            name: fileName,
+            path: `.standards/${fileName}`,
+            content: files[fileName as keyof typeof files]
+          }
+        };
+      }
+    }
+    return {
+      format: 'files',
+      description: "Files for .standards/ directory - create this directory and save these files",
+      files: Object.entries(files).map(([name, content]) => ({
+        name,
+        path: `.standards/${name}`,
+        content
+      }))
+    };
+  }
+
+  if (format === 'json') {
+    return {
+      format: 'json',
+      section,
+      data: getSection(section)
+    };
+  }
+
+  // Default: markdown format
+  const sectionData = getSection(section);
+  return {
+    format: 'markdown',
+    section,
+    version: STANDARDS.version,
+    data: sectionData,
+    usage: {
+      fetch_all: "get_engineering_standards({ format: 'files' }) to get all files for .standards/",
+      specific_section: "get_engineering_standards({ section: 'python' }) for Python standards",
+      for_llm: "Read .standards/ directory before implementing features"
+    }
+  };
+}
+
 // MCP Server Info
 const SERVER_INFO = {
   name: 'enhanced-context-mcp',
-  version: '2.0.0'
+  version: '2.1.0'
 };
 
 // MCP Protocol Version
@@ -1423,6 +2008,10 @@ async function executeTool(toolName: string, args: any): Promise<{ success: bool
 
       case 'get_contextual_agent':
         result = await handleContextualAgent(args || {});
+        break;
+
+      case 'get_engineering_standards':
+        result = handleEngineeringStandards(args || {});
         break;
 
       default:
