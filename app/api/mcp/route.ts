@@ -421,24 +421,24 @@ const TOOLS = [
   },
   {
     name: 'get_sdlc_guidance',
-    description: 'Get VISHKAR 13-Step Autonomous SDLC guidance. Returns the complete autonomous development lifecycle with agent mappings, quality gates, MCP tool recommendations, and inter-agent handoff protocols. Use this to understand what agents do at each step and which MCP tools to use.',
+    description: 'Get VISHKAR 17-Step Enhanced SDLC guidance with 4-Angle Internal Review. Returns the complete autonomous development lifecycle with agent mappings, quality gates, MCP tool recommendations, severity levels, storage schemas, and contextual agent selection. Use this to understand what agents do at each step and which MCP tools to use.',
     inputSchema: {
       type: 'object',
       properties: {
         section: {
           type: 'string',
-          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'tools_by_step', 'full'],
-          description: 'Which section: overview (summary + thresholds), steps (all 13 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), tools_by_step (MCP tools per step), full (everything)'
+          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'tools_by_step', 'severity_levels', 'storage_schemas', 'contextual_selection', 'full'],
+          description: 'Which section: overview (summary + thresholds), steps (all 17 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), tools_by_step (MCP tools per step), severity_levels (issue severity definitions), storage_schemas (findings/lessons storage), contextual_selection (file pattern rules), full (everything)'
         },
         step_number: {
           type: 'number',
           minimum: 1,
-          maximum: 13,
-          description: 'Get detailed guidance for a specific step (1-13). Required when section is "step".'
+          maximum: 17,
+          description: 'Get detailed guidance for a specific step (1-17). Required when section is "step".'
         },
         agent_role: {
           type: 'string',
-          enum: ['pm_agent', 'dev_agent', 'qa_agent', 'review_agent', 'doc_agent', 'coordinator'],
+          enum: ['pm_agent', 'dev_agent', 'qa_agent', 'review_agent_architecture', 'review_agent_security', 'review_agent_quality', 'review_agent_techstack', 'pr_review_agent', 'coordinator'],
           description: 'Filter steps by agent role to see what a specific agent is responsible for'
         }
       },
@@ -460,6 +460,29 @@ const TOOLS = [
           type: 'string',
           enum: ['questions', 'architecture', 'delivery', 'risks', 'north_star', 'demo'],
           description: 'Get detailed guidance for a specific POC page type'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_contextual_agent',
+    description: 'Get the right VISHKAR agent(s) for reviewing or working on specific files. This tool matches file paths against tech-stack patterns and returns the most appropriate specialized agents. Use this for Step 6 (Tech-Stack Review) of the 17-Step SDLC or when you need to find "the right architect" for a specific type of file.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file_paths: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Array of file paths to match against tech-stack patterns (e.g., ["backend/src/main.py", "frontend/components/Button.tsx"])'
+        },
+        file_path: {
+          type: 'string',
+          description: 'Single file path to match (alternative to file_paths array)'
+        },
+        include_agent_details: {
+          type: 'boolean',
+          description: 'Include full agent profile details in response (default: false)'
         }
       },
       required: []
@@ -489,8 +512,14 @@ function handleGetStarted(args: { include_examples?: boolean }) {
     available_tools: {
       sdlc: {
         tool: "get_sdlc_guidance",
-        description: "13-step autonomous SDLC with agent mappings and MCP integration",
-        sections: ["overview", "steps", "step", "agents", "mcp_servers", "handoff", "escalation", "tools_by_step", "full"]
+        description: "17-step enhanced SDLC with 4-Angle Internal Review, agent mappings, and MCP integration",
+        sections: ["overview", "steps", "step", "agents", "mcp_servers", "handoff", "escalation", "tools_by_step", "severity_levels", "storage_schemas", "contextual_selection", "full"]
+      },
+      contextual_agent: {
+        tool: "get_contextual_agent",
+        description: "Get the right specialist agent(s) for reviewing specific files - 'Give me the right architect'",
+        parameters: ["file_paths", "file_path", "include_agent_details"],
+        usage: "Pass file paths to get matched agents for Step 6 (Tech-Stack Review)"
       },
       agents: {
         tool: "list_vishkar_agents",
@@ -510,24 +539,21 @@ function handleGetStarted(args: { include_examples?: boolean }) {
     },
 
     sdlc_overview: {
-      name: "VISHKAR 13-Step Autonomous SDLC",
-      description: "Agent-driven software development lifecycle with quality gates",
-      quality_thresholds: { minimum_score: "7/10", test_coverage: "90%" },
-      steps_summary: [
-        { step: 1, name: "Project Initialization", owner: "pm_agent" },
-        { step: 2, name: "Requirements Gathering", owner: "pm_agent" },
-        { step: 3, name: "Epic & Story Creation", owner: "pm_agent" },
-        { step: 4, name: "Technical Design", owner: "dev_agent" },
-        { step: 5, name: "Sprint Planning", owner: "pm_agent" },
-        { step: 6, name: "Implementation", owner: "dev_agent" },
-        { step: 7, name: "Unit Testing", owner: "qa_agent" },
-        { step: 8, name: "PR Review (3-Phase)", owner: "review_agent" },
-        { step: 9, name: "Integration Testing", owner: "qa_agent" },
-        { step: 10, name: "Documentation", owner: "doc_agent" },
-        { step: 11, name: "Deployment", owner: "dev_agent" },
-        { step: 12, name: "Verification", owner: "qa_agent" },
-        { step: 13, name: "Handoff & Closure", owner: "pm_agent" }
+      name: "VISHKAR 17-Step Enhanced SDLC",
+      version: "2.0.0",
+      description: "Agent-driven SDLC with 4-Angle Internal Review - Quality at source",
+      key_feature: "4-Angle Internal Review (Steps 3-6) catches issues before testing",
+      quality_thresholds: { minimum_score: "7/10", test_coverage: "90%", blocking_severities: ["critical", "high"] },
+      phases: [
+        { name: "Task Selection", steps: [1] },
+        { name: "Implementation", steps: [2] },
+        { name: "4-Angle Internal Review", steps: [3, 4, 5, 6], description: "Architecture, Security, Quality, Tech-Stack" },
+        { name: "Feedback", steps: [7] },
+        { name: "Testing", steps: [8, 9, 10, 11] },
+        { name: "PR & Review", steps: [12, 13, 14] },
+        { name: "Merge & Deploy", steps: [15, 16, 17] }
       ],
+      contextual_agent_selection: "Use get_contextual_agent to find the right specialist for Step 6",
       get_full_details: "Call get_sdlc_guidance with section='full'"
     },
 
@@ -606,89 +632,143 @@ function handleGetStarted(args: { include_examples?: boolean }) {
   return onboarding;
 }
 
-// Handler for SDLC Guidance - VISHKAR 13-Step Autonomous SDLC
+// Handler for SDLC Guidance - VISHKAR 17-Step Enhanced SDLC with 4-Angle Internal Review
 function handleSdlcGuidance(args: { section?: string; step_number?: number; agent_role?: string }) {
   const { section = 'full', step_number, agent_role } = args;
 
-  // Import SDLC config (inline for serverless)
+  // VISHKAR 17-Step Enhanced SDLC v2.0.0 (inline for serverless)
   const SDLC = {
-    name: "VISHKAR 13-Step Autonomous SDLC",
-    version: "1.0.0",
-    description: "Automated development lifecycle from story selection to completion with quality gates and human approval points",
+    name: "VISHKAR 17-Step Enhanced SDLC",
+    version: "2.0.0",
+    description: "Enhanced development lifecycle with 4-Angle Internal Review after task implementation - Quality at source",
 
     overview: {
       purpose: "Enable autonomous agents to execute the full software development lifecycle with minimal human intervention",
-      philosophy: "Automation first, human oversight at critical gates",
+      philosophy: "Quality at source - review early, fix early",
+      total_steps: 17,
+      human_gates: 1,
+      automated_steps: 16,
+      key_enhancement: "4-Angle Internal Review (Steps 3-6) after implementation catches issues before testing",
       quality_thresholds: {
         minimum_quality_score: 7,
         test_pass_rate: 90,
         max_retries: 3,
-        escalation_trigger: "After 3 failed retries, escalate to human"
+        escalation_trigger: "After 3 failed retries, escalate to human",
+        critical_issues_allowed: 0,
+        high_issues_allowed: 0
       }
+    },
+
+    severity_levels: [
+      { level: "critical", symbol: "🔴", description: "Security vulnerabilities, production-breaking issues", action: "MUST fix before proceeding", blocking: true },
+      { level: "high", symbol: "🟠", description: "Performance issues, significant maintainability concerns", action: "MUST fix before proceeding", blocking: true },
+      { level: "medium", symbol: "🟡", description: "Code quality improvements, best practice suggestions", action: "SHOULD fix, recommended", blocking: false },
+      { level: "low", symbol: "🟢", description: "Style preferences, minor optimizations", action: "MAY fix, or log for future", blocking: false }
+    ],
+
+    contextual_agent_selection: {
+      description: "Rules for selecting the right agent based on file patterns being reviewed",
+      usage: "When Step 6 (Tech-Stack Review) runs, select agent based on files being changed",
+      tool: "get_contextual_agent",
+      example_patterns: [
+        { pattern: "backend/**/*.py", agents: ["a-fastapi-pro", "a-backend-engineer"] },
+        { pattern: "frontend/**/*.tsx", agents: ["a-frontend-developer", "a-typescript-pro"] },
+        { pattern: "terraform/**/*", agents: ["a-terraform-specialist"] },
+        { pattern: "**/api/**/*", agents: ["a-backend-architect", "a-backend-engineer"] }
+      ],
+      default_agent: "a-backend-engineer"
     },
 
     mcp_servers: {
       vercel_hosted: [
-        { name: "Project Registry", url: "https://project-registry-henna.vercel.app", howto: "https://project-registry-henna.vercel.app/api/howto", purpose: "API key management", used_in_steps: "All" },
-        { name: "JIRA MCP", url: "https://jira-mcp-pi.vercel.app", howto: "https://jira-mcp-pi.vercel.app/api/howto", purpose: "Issue tracking, story lifecycle", used_in_steps: [1, 13] },
-        { name: "Confluence MCP", url: "https://confluence-mcp-six.vercel.app", howto: "https://confluence-mcp-six.vercel.app/api/howto", purpose: "Documentation, test reports", used_in_steps: [12] },
-        { name: "Enhanced Context MCP", url: "https://enhanced-context-mcp.vercel.app", howto: "https://enhanced-context-mcp.vercel.app/api/howto", purpose: "Context loading, SDLC guidance", used_in_steps: "All" },
-        { name: "Story Crafter MCP", url: "https://storycrafter-mcp.vercel.app", howto: "https://storycrafter-mcp.vercel.app/api/howto", purpose: "Backlog generation", used_in_steps: [1] }
+        { name: "Project Registry", url: "https://project-registry-henna.vercel.app", howto: "https://project-registry-henna.vercel.app/api/howto", purpose: "API key management and credential storage" },
+        { name: "JIRA MCP", url: "https://jira-mcp-pi.vercel.app", howto: "https://jira-mcp-pi.vercel.app/api/howto", purpose: "Issue tracking, sprint management, story lifecycle", used_in_steps: [1, 17] },
+        { name: "Confluence MCP", url: "https://confluence-mcp-six.vercel.app", howto: "https://confluence-mcp-six.vercel.app/api/howto", purpose: "Documentation, architecture diagrams, test reports", used_in_steps: [17] },
+        { name: "Enhanced Context MCP", url: "https://enhanced-context-mcp.vercel.app", howto: "https://enhanced-context-mcp.vercel.app/api/howto", purpose: "Context loading, agent discovery, SDLC guidance, contextual agent selection", used_in_steps: "All steps" },
+        { name: "Story Crafter MCP", url: "https://storycrafter-mcp.vercel.app", howto: "https://storycrafter-mcp.vercel.app/api/howto", purpose: "Backlog generation from VISHKAR consensus", used_in_steps: [1] }
       ],
       docker_local: [
-        { name: "PR-Agent MCP", url: "http://localhost:8188", port: 8188, purpose: "AI-powered PR review (runs locally for security)", used_in_steps: [8], note: "Code review runs on LOCAL Docker - code never leaves your environment" }
+        { name: "PR-Agent MCP", url: "http://localhost:8188", port: 8188, purpose: "AI-powered PR review, code analysis, security scanning", used_in_steps: [13], note: "Code review MCP runs on local Docker for security - keeps code analysis local" }
       ]
     },
 
     agent_mapping: {
-      pm_agent: { wama_agents: ["a-project-manager"], owned_steps: [1, 13], responsibilities: ["Story selection", "Story completion", "Sprint management"] },
-      dev_agent: { wama_agents: ["a-backend-engineer", "a-frontend-developer"], owned_steps: [2, 3, 7, 9], responsibilities: ["Implementation", "Manual verification", "PR creation", "Feedback implementation"] },
-      qa_agent: { wama_agents: ["a-test-automator", "a-qa-engineer"], owned_steps: [4, 5, 6], responsibilities: ["Test case creation", "Test implementation", "Test execution"] },
-      review_agent: { wama_agents: ["a-code-reviewer", "a-pr-orchestrator"], owned_steps: [8], responsibilities: ["3-phase PR review", "Security analysis", "Performance analysis"] },
-      doc_agent: { wama_agents: ["a-documentation-specialist"], owned_steps: [12], responsibilities: ["Documentation updates", "Architecture diagrams", "Test report linking"] },
+      pm_agent: { wama_agents: ["a-project-manager"], owned_steps: [1, 17], responsibilities: ["Story selection", "Story completion", "Sprint management"] },
+      dev_agent: { wama_agents: ["a-backend-engineer", "a-frontend-developer", "a-fullstack-developer"], owned_steps: [2, 7, 8, 12, 14], responsibilities: ["Implementation", "Feedback fixes", "Manual verification", "PR creation", "PR feedback implementation"] },
+      review_agent_architecture: { wama_agents: ["a-architect-review"], owned_steps: [3], responsibilities: ["System design review", "Component boundaries", "Scalability assessment"] },
+      review_agent_security: { wama_agents: ["a-security-auditor"], owned_steps: [4], responsibilities: ["Security vulnerability detection", "OWASP compliance", "Auth review"] },
+      review_agent_quality: { wama_agents: ["a-code-reviewer"], owned_steps: [5], responsibilities: ["Code quality assessment", "SOLID principles", "Clean code"] },
+      review_agent_techstack: { wama_agents: ["contextual"], owned_steps: [6], responsibilities: ["Framework-specific review", "Performance patterns", "Best practices"], agent_selection: "Use get_contextual_agent based on file patterns" },
+      qa_agent: { wama_agents: ["a-test-automator", "a-qa-engineer"], owned_steps: [9, 10, 11], responsibilities: ["Test case creation", "Test implementation", "Test execution"] },
+      pr_review_agent: { wama_agents: ["a-pr-orchestrator"], owned_steps: [13], responsibilities: ["Formal PR review orchestration", "Cross-agent coordination"] },
       coordinator: { wama_agents: ["a-architect-review"], owned_steps: "All (monitoring)", responsibilities: ["Cross-step monitoring", "Escalation handling", "Quality oversight"] }
     },
 
-    steps: [
-      { step: 1, name: "Story Selection", short_name: "Story → In Progress", owner: "PM Agent", automated: true, gate: null, mcp_tools: { jira: ["search_issues", "transition_issue", "add_comment"] }, entry: ["Stories in Ready", "No blockers"], exit: ["Story in In Progress", "AC defined"], handoff_to: "Dev Agent" },
-      { step: 2, name: "Implementation", short_name: "Implementation", owner: "Dev Agent", automated: true, gate: null, mcp_tools: { enhanced_context: ["load_enhanced_context"] }, entry: ["Story in progress"], exit: ["Code complete", "Quality >= 7/10"], handoff_to: "Dev Agent (Step 3)" },
-      { step: 3, name: "Manual Verification", short_name: "Manual Verification", owner: "Dev Agent", automated: true, gate: "Optional", mcp_tools: { jira: ["add_comment"] }, entry: ["Implementation complete"], exit: ["App starts", "Happy path works"], handoff_to: "QA Agent" },
-      { step: 4, name: "Create Test Cases", short_name: "Create GitHub Test Cases", owner: "QA Agent", automated: true, gate: null, mcp_tools: { jira: ["get_issue_details"] }, entry: ["Verification passed"], exit: ["Test cases created"], handoff_to: "QA Agent (Step 5)" },
-      { step: 5, name: "Implement Tests", short_name: "Implement Playwright Tests", owner: "QA Agent", automated: true, gate: null, mcp_tools: { enhanced_context: ["load_enhanced_context"] }, entry: ["Test cases ready"], exit: ["Playwright tests implemented"], handoff_to: "QA Agent (Step 6)" },
-      { step: 6, name: "Execute Tests", short_name: "Execute Tests", owner: "QA Agent", automated: "Semi", gate: { type: "Quality", threshold: ">=90% pass" }, mcp_tools: { jira: ["add_comment"] }, entry: ["Tests implemented"], exit: ["Pass rate >= 90%"], handoff_to: "Dev Agent" },
-      { step: 7, name: "PR Creation", short_name: "PR Creation", owner: "Dev Agent", automated: true, gate: null, mcp_tools: { jira: ["add_comment"] }, entry: ["Tests passing"], exit: ["PR created"], handoff_to: "Review Agent" },
-      { step: 8, name: "3-Phase PR Review", short_name: "3-Phase PR Review", owner: "Review Agent", automated: true, gate: null, mcp_tools: { pr_agent_docker: ["pr_describe", "pr_review", "pr_improve"] }, entry: ["PR created"], exit: ["Review complete"], handoff_to: "Dev Agent", note: "PR-Agent runs on LOCAL DOCKER (port 8188)" },
-      { step: 9, name: "Feedback Implementation", short_name: "Feedback Implementation", owner: "Dev Agent", automated: true, gate: null, mcp_tools: { jira: ["add_comment"] }, entry: ["Review feedback received"], exit: ["All feedback addressed"], handoff_to: "CI/CD" },
-      { step: 10, name: "CI/CD Pipeline", short_name: "Pipeline Execution", owner: "CI/CD", automated: "Semi", gate: { type: "Quality", threshold: "All green" }, mcp_tools: {}, entry: ["Feedback addressed"], exit: ["All checks pass"], handoff_to: "Human" },
-      { step: 11, name: "Human Merge Approval", short_name: "Merge Approval", owner: "Human", automated: false, gate: { type: "Human Gate", description: "ONLY mandatory human intervention" }, mcp_tools: {}, entry: ["CI passing"], exit: ["PR merged"], handoff_to: "Doc Agent" },
-      { step: 12, name: "Documentation Update", short_name: "Confluence Update", owner: "Doc Agent", automated: true, gate: null, mcp_tools: { confluence: ["create_page", "update_page", "insert_jira_macro"] }, entry: ["PR merged"], exit: ["Docs updated"], handoff_to: "PM Agent" },
-      { step: 13, name: "Story Closure", short_name: "Story → Done", owner: "PM Agent", automated: true, gate: null, mcp_tools: { jira: ["transition_issue", "add_comment", "search_issues"] }, entry: ["Docs complete"], exit: ["Story Done", "Next story selected"], handoff_to: "PM Agent (Step 1)" }
+    phases: [
+      { name: "Task Selection", steps: [1], description: "Select and prepare task from backlog" },
+      { name: "Implementation", steps: [2], description: "Develop the feature/fix" },
+      { name: "4-Angle Internal Review", steps: [3, 4, 5, 6], description: "Architecture, Security, Quality, Tech-Stack reviews" },
+      { name: "Feedback", steps: [7], description: "Address review findings" },
+      { name: "Testing", steps: [8, 9, 10, 11], description: "Manual verification and automated testing" },
+      { name: "PR & Review", steps: [12, 13, 14], description: "Create PR and formal review" },
+      { name: "Merge & Deploy", steps: [15, 16, 17], description: "CI/CD, approval, and closure" }
     ],
 
+    steps: [
+      { step: 1, name: "Task Selection", phase: "Task Selection", owner: "PM Agent", automated: true, gate: null, description: "Select task from JIRA backlog and move to In Progress", jira_transition: "To Do -> In Progress" },
+      { step: 2, name: "Implementation", phase: "Implementation", owner: "Dev Agent", automated: true, gate: null, description: "Implement the task following coding standards, load lessons learned", context_loading: ".reviews/lessons_learned.json" },
+      { step: 3, name: "Architecture Review", phase: "4-Angle Internal Review", owner: "Review Agent (Architecture)", automated: true, gate: { type: "Quality Gate", threshold: "0 Critical, 0 High issues" }, description: "Review system design and architectural implications", focus: ["System design patterns", "Component boundaries", "Scalability", "Technical debt"], blocking_on: ["critical", "high"] },
+      { step: 4, name: "Security Review", phase: "4-Angle Internal Review", owner: "Review Agent (Security)", automated: true, gate: { type: "Quality Gate", threshold: "0 Critical, 0 High issues" }, description: "Review for security vulnerabilities and compliance", focus: ["OWASP Top 10", "Auth/AuthZ", "Input validation", "Secrets management"], blocking_on: ["critical", "high"] },
+      { step: 5, name: "Code Quality Review", phase: "4-Angle Internal Review", owner: "Review Agent (Quality)", automated: true, gate: { type: "Quality Gate", threshold: "0 Critical, 0 High issues" }, description: "Review for code quality and maintainability", focus: ["SOLID principles", "Clean code", "DRY", "Error handling"], blocking_on: ["critical", "high"] },
+      { step: 6, name: "Tech-Stack Review", phase: "4-Angle Internal Review", owner: "Review Agent (Tech-Stack)", automated: true, gate: { type: "Quality Gate", threshold: "0 Critical, 0 High issues" }, description: "Review for technology-specific best practices", focus: ["Framework patterns", "Performance", "Async patterns", "Caching"], agent_selection: "contextual - use get_contextual_agent", blocking_on: ["critical", "high"] },
+      { step: 7, name: "Feedback Implementation & Storage", phase: "Feedback", owner: "Dev Agent", automated: true, gate: { type: "Quality Gate", threshold: "0 Critical, 0 High remaining" }, description: "Address findings from 4-angle review and store for LLM learning", storage: { findings: ".reviews/findings/{task_id}_findings.json", lessons: ".reviews/lessons_learned.json" } },
+      { step: 8, name: "Manual Verification", phase: "Testing", owner: "Dev Agent", automated: true, gate: "Optional", description: "Developer verifies implementation works locally" },
+      { step: 9, name: "Create Test Cases", phase: "Testing", owner: "QA Agent", automated: true, gate: null, description: "Define test scenarios in TCM-compatible JSON format", storage: "tests/cases/{task_id}.json" },
+      { step: 10, name: "Implement Tests", phase: "Testing", owner: "QA Agent", automated: true, gate: null, description: "Write automated tests based on test cases", coverage_threshold: 80 },
+      { step: 11, name: "Execute Tests", phase: "Testing", owner: "QA Agent", automated: true, gate: { type: "Quality Gate", threshold: ">=90% pass rate, >=80% coverage" }, description: "Run full test suite and verify quality threshold" },
+      { step: 12, name: "PR Creation", phase: "PR & Review", owner: "Dev Agent", automated: true, gate: null, description: "Create pull request with review checklist", commit_format: "{PROJECT}-{number}: {summary}" },
+      { step: 13, name: "PR Review (Formal)", phase: "PR & Review", owner: "PR Review Agent", automated: true, gate: null, description: "Formal PR review using PR-Agent (Docker)", review_phases: ["pr_describe", "pr_review", "pr_improve"], note: "PR-Agent runs on LOCAL DOCKER (port 8188)" },
+      { step: 14, name: "PR Feedback Implementation", phase: "PR & Review", owner: "Dev Agent", automated: true, gate: null, description: "Address PR review comments" },
+      { step: 15, name: "CI/CD Pipeline", phase: "Merge & Deploy", owner: "CI/CD (Automated)", automated: "Semi", gate: { type: "Quality Gate", threshold: "All checks green" }, description: "Execute automated CI/CD pipeline" },
+      { step: 16, name: "Human Merge Approval", phase: "Merge & Deploy", owner: "Human", automated: false, gate: { type: "Human Gate", description: "ONLY mandatory human intervention point" }, description: "Final human sign-off before merge" },
+      { step: 17, name: "Story Closure", phase: "Merge & Deploy", owner: "PM Agent", automated: true, gate: null, description: "Close task and update documentation", jira_transition: "In Progress -> Done" }
+    ],
+
+    storage_schemas: {
+      findings_per_task: { location: ".reviews/findings/{task_id}_findings.json", purpose: "Store review findings for each task" },
+      lessons_learned: { location: ".reviews/lessons_learned.json", purpose: "LLM learning context - load at start of each implementation" },
+      test_cases: { location: "tests/cases/{task_id}.json", format: "TCM-compatible JSON" }
+    },
+
     handoff_format: {
-      schema: { from: "Agent role", to: "Target agent", messageType: "handoff", payload: { storyKey: "JIRA key", step: "number", qualityScore: "1-10", nextActions: "array" } },
-      example: { from: "Dev Agent", to: "QA Agent", messageType: "handoff", payload: { storyKey: "PROJ-123", step: 3, qualityScore: 8.2, nextActions: ["Create test cases", "Implement tests"] } }
+      schema: { from: "Agent role", to: "Target agent", messageType: "handoff", timestamp: "ISO 8601", step: "number", payload: {} },
+      example: { from: "Dev Agent", to: "Review Agent (Architecture)", messageType: "handoff", timestamp: "2024-01-15T10:30:00Z", step: 2, payload: { taskKey: "PROJ-123", changedFiles: ["src/api/auth.py"], qualityScore: 8.2 } }
     },
 
     escalation: {
-      triggers: ["Quality < 7/10 after 3 attempts", "Test pass rate < 90% after 3 retries", "CI fails 3 times", "Security vulnerability (auto-escalate)"],
-      escalation_to: "Human + Coordinator (a-architect-review)"
+      triggers: ["Quality < 7/10 after 3 attempts", "Test pass rate < 90% after 3 retries", "CI fails 3 times", "Critical/High issues remain after 3 fix attempts", "Security vulnerability (auto-escalate)"],
+      escalation_to: "Human + Coordinator Agent (a-architect-review)",
+      required_info: ["Failed step", "Retry count", "Failure reason", "Suggested remediation"]
     },
 
     tools_by_step: {
-      1: { mcp: "JIRA MCP (Vercel)", tools: ["search_issues", "transition_issue", "add_comment"] },
-      2: { mcp: "Enhanced Context MCP (Vercel)", tools: ["load_enhanced_context"] },
-      3: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
-      4: { mcp: "JIRA MCP (Vercel)", tools: ["get_issue_details"] },
-      5: { mcp: "Enhanced Context MCP (Vercel)", tools: ["load_enhanced_context"] },
-      6: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
-      7: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
-      8: { mcp: "PR-Agent MCP (Docker localhost:8188)", tools: ["pr_describe", "pr_review", "pr_improve"] },
-      9: { mcp: "JIRA MCP (Vercel)", tools: ["add_comment"] },
-      10: { mcp: "External CI/CD", tools: [] },
-      11: { mcp: "Human", tools: [] },
-      12: { mcp: "Confluence MCP (Vercel)", tools: ["create_page", "update_page"] },
-      13: { mcp: "JIRA MCP (Vercel)", tools: ["transition_issue", "add_comment", "search_issues"] }
+      1: { mcp: "JIRA MCP", tools: ["search_issues", "transition_issue", "add_comment"] },
+      2: { mcp: "Enhanced Context MCP", tools: ["load_enhanced_context"] },
+      3: { mcp: "Enhanced Context MCP", tools: ["load_vishkar_agent"], agent: "a-architect-review" },
+      4: { mcp: "Enhanced Context MCP", tools: ["load_vishkar_agent"], agent: "a-security-auditor" },
+      5: { mcp: "Enhanced Context MCP", tools: ["load_vishkar_agent"], agent: "a-code-reviewer" },
+      6: { mcp: "Enhanced Context MCP", tools: ["get_contextual_agent", "load_vishkar_agent"], agent: "contextual" },
+      7: { mcp: "Enhanced Context MCP + JIRA", tools: ["load_enhanced_context", "add_comment"] },
+      8: { mcp: "JIRA MCP", tools: ["add_comment"] },
+      9: { mcp: "JIRA MCP + Enhanced Context", tools: ["get_issue_details", "load_enhanced_context"] },
+      10: { mcp: "Enhanced Context MCP", tools: ["load_enhanced_context"] },
+      11: { mcp: "JIRA MCP", tools: ["add_comment"] },
+      12: { mcp: "JIRA MCP", tools: ["add_comment"] },
+      13: { mcp: "PR-Agent MCP (Docker localhost:8188)", tools: ["pr_describe", "pr_review", "pr_improve"] },
+      14: { mcp: "JIRA MCP", tools: ["add_comment"] },
+      15: { mcp: "External CI/CD", tools: [] },
+      16: { mcp: "Human", tools: [] },
+      17: { mcp: "JIRA MCP + Confluence MCP", tools: ["transition_issue", "add_comment", "add_worklog", "update_page"] }
     }
   };
 
@@ -702,11 +782,12 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
   // Get specific step
   if (section === 'step' && step_number) {
     const step = SDLC.steps.find(s => s.step === step_number);
-    if (!step) return { error: `Step ${step_number} not found. Valid steps: 1-13` };
+    if (!step) return { error: `Step ${step_number} not found. Valid steps: 1-17` };
     return {
       step,
       mcp_tools: SDLC.tools_by_step[step_number as keyof typeof SDLC.tools_by_step],
-      quality_thresholds: SDLC.overview.quality_thresholds
+      quality_thresholds: SDLC.overview.quality_thresholds,
+      severity_levels: SDLC.severity_levels
     };
   }
 
@@ -714,11 +795,10 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
     case 'overview':
       return {
         name: SDLC.name,
+        version: SDLC.version,
         description: SDLC.description,
         ...SDLC.overview,
-        total_steps: 13,
-        human_gates: 1,
-        automated_steps: 12
+        phases: SDLC.phases
       };
 
     case 'steps':
@@ -726,13 +806,14 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
       return {
         total: steps.length,
         steps,
-        steps_summary: steps.map(s => ({ step: s.step, name: s.name, owner: s.owner, automated: s.automated }))
+        steps_summary: steps.map(s => ({ step: s.step, name: s.name, phase: s.phase, owner: s.owner, automated: s.automated }))
       };
 
     case 'agents':
       return {
         agent_mapping: SDLC.agent_mapping,
-        usage: "Use agent_role parameter to filter steps by agent"
+        usage: "Use agent_role parameter to filter steps by agent",
+        note: "review_agent_techstack uses contextual agent selection - call get_contextual_agent with file paths"
       };
 
     case 'mcp_servers':
@@ -754,18 +835,53 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
         tools: SDLC.tools_by_step
       };
 
+    case 'severity_levels':
+      return {
+        description: "Issue severity levels and their blocking behavior",
+        severity_levels: SDLC.severity_levels,
+        blocking_rules: {
+          critical: "MUST fix before proceeding - blocks all progress",
+          high: "MUST fix before proceeding - blocks all progress",
+          medium: "SHOULD fix, recommended but not blocking",
+          low: "MAY fix or log for future - not blocking"
+        }
+      };
+
+    case 'storage_schemas':
+      return {
+        description: "Storage schemas for review findings, lessons learned, and test cases",
+        schemas: SDLC.storage_schemas,
+        purpose: "Enable LLM learning from previous reviews to prevent repeated mistakes"
+      };
+
+    case 'contextual_selection':
+      return {
+        section_description: "Contextual agent selection for Step 6 (Tech-Stack Review)",
+        ...SDLC.contextual_agent_selection,
+        how_to_use: "Call get_contextual_agent with file_paths to get the right specialist agent(s)",
+        example: {
+          tool: "get_contextual_agent",
+          arguments: { file_paths: ["backend/src/main.py", "frontend/components/Button.tsx"] },
+          response: "Returns a-fastapi-pro, a-backend-engineer, a-frontend-developer, a-typescript-pro"
+        }
+      };
+
     case 'full':
     default:
       return {
         ...SDLC,
         summary: {
           name: SDLC.name,
-          total_steps: 13,
+          version: SDLC.version,
+          total_steps: 17,
           human_gates: 1,
-          automated_steps: 12,
+          automated_steps: 16,
+          key_feature: "4-Angle Internal Review (Steps 3-6)",
+          phases: SDLC.phases.map(p => p.name),
           vercel_mcps: SDLC.mcp_servers.vercel_hosted.map(m => m.name),
           docker_mcps: SDLC.mcp_servers.docker_local.map(m => `${m.name} (port ${m.port})`),
-          agent_roles: Object.keys(SDLC.agent_mapping)
+          agent_roles: Object.keys(SDLC.agent_mapping),
+          new_in_v2: ["4-Angle Internal Review", "Severity Levels", "Contextual Agent Selection", "Findings Storage", "Lessons Learned"]
         }
       };
   }
@@ -1057,10 +1173,183 @@ function handlePocBuildingGuide(args: { section?: string; page_type?: string }) 
   }
 }
 
+// Handler for Contextual Agent Selection - "Give me the right architect"
+async function handleContextualAgent(args: { file_paths?: string[]; file_path?: string; include_agent_details?: boolean }) {
+  const { file_paths, file_path, include_agent_details = false } = args;
+
+  // Combine file_paths array and single file_path into one list
+  const filesToMatch: string[] = [];
+  if (file_paths && Array.isArray(file_paths)) {
+    filesToMatch.push(...file_paths);
+  }
+  if (file_path) {
+    filesToMatch.push(file_path);
+  }
+
+  if (filesToMatch.length === 0) {
+    return {
+      error: "No file paths provided. Provide either file_paths (array) or file_path (string)",
+      usage: {
+        file_paths: ["backend/src/main.py", "frontend/components/Button.tsx"],
+        file_path: "backend/src/main.py"
+      }
+    };
+  }
+
+  // Contextual agent selection rules from SDLC v2.0.0
+  const CONTEXTUAL_RULES = [
+    { pattern: "backend/**/*.py", agents: ["a-fastapi-pro", "a-backend-engineer"], description: "Python backend files" },
+    { pattern: "frontend/**/*.tsx", agents: ["a-frontend-developer", "a-typescript-pro"], description: "React TypeScript components" },
+    { pattern: "frontend/**/*.ts", agents: ["a-typescript-pro"], description: "TypeScript files" },
+    { pattern: "frontend/**/*.js", agents: ["a-javascript-pro"], description: "JavaScript files" },
+    { pattern: "**/*.jsx", agents: ["a-frontend-developer", "a-javascript-pro"], description: "React JSX components" },
+    { pattern: "docker/**/*", agents: ["a-deployment-engineer"], description: "Docker configuration" },
+    { pattern: "**/Dockerfile*", agents: ["a-deployment-engineer"], description: "Dockerfile" },
+    { pattern: "**/*.yml", agents: ["a-deployment-engineer"], description: "YAML configuration files" },
+    { pattern: "**/*.yaml", agents: ["a-deployment-engineer"], description: "YAML configuration files" },
+    { pattern: "terraform/**/*", agents: ["a-terraform-specialist"], description: "Terraform IaC files" },
+    { pattern: "**/*.tf", agents: ["a-terraform-specialist"], description: "Terraform files" },
+    { pattern: "tests/**/*", agents: ["a-test-automator"], description: "Test files" },
+    { pattern: "**/*test*.py", agents: ["a-test-automator"], description: "Python test files" },
+    { pattern: "**/*spec*.ts", agents: ["a-test-automator"], description: "TypeScript spec files" },
+    { pattern: "**/*test*.ts", agents: ["a-test-automator"], description: "TypeScript test files" },
+    { pattern: "**/*test*.tsx", agents: ["a-test-automator"], description: "React test files" },
+    { pattern: "**/api/**/*", agents: ["a-backend-architect", "a-backend-engineer"], description: "API endpoints" },
+    { pattern: "**/components/**/*", agents: ["a-frontend-developer"], description: "UI components" },
+    { pattern: "**/hooks/**/*", agents: ["a-frontend-developer"], description: "React hooks" },
+    { pattern: "**/*.sql", agents: ["a-backend-engineer"], description: "SQL files" },
+    { pattern: "**/migrations/**/*", agents: ["a-backend-engineer"], description: "Database migrations" },
+    { pattern: "**/*.prisma", agents: ["a-backend-engineer"], description: "Prisma schema" },
+    { pattern: "**/*.go", agents: ["a-backend-engineer"], description: "Go files" },
+    { pattern: "**/*.rs", agents: ["a-backend-engineer"], description: "Rust files" },
+    { pattern: "**/*.java", agents: ["a-backend-engineer"], description: "Java files" },
+    { pattern: "**/security/**/*", agents: ["a-security-auditor"], description: "Security-related files" },
+    { pattern: "**/auth/**/*", agents: ["a-security-auditor", "a-backend-engineer"], description: "Authentication files" },
+    { pattern: "**/*.md", agents: ["a-code-reviewer"], description: "Markdown documentation" },
+    { pattern: "**/infra/**/*", agents: ["a-cloud-architect", "a-terraform-specialist"], description: "Infrastructure files" },
+    { pattern: "**/k8s/**/*", agents: ["a-deployment-engineer"], description: "Kubernetes configurations" },
+    { pattern: "**/*.css", agents: ["a-frontend-developer"], description: "CSS stylesheets" },
+    { pattern: "**/*.scss", agents: ["a-frontend-developer"], description: "SCSS stylesheets" }
+  ];
+
+  const DEFAULT_AGENT = "a-backend-engineer";
+
+  // Simple glob pattern matching function
+  function matchPattern(filePath: string, pattern: string): boolean {
+    // Convert glob pattern to regex
+    const regexPattern = pattern
+      .replace(/\*\*/g, '{{GLOBSTAR}}')  // Preserve ** for later
+      .replace(/\*/g, '[^/]*')            // * matches anything except /
+      .replace(/{{GLOBSTAR}}/g, '.*')     // ** matches anything including /
+      .replace(/\?/g, '.')                // ? matches single char
+      .replace(/\./g, '\\.');             // Escape dots
+
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(filePath);
+  }
+
+  // Match each file to its rules
+  const matches: { file: string; matchedRules: { pattern: string; agents: string[]; description: string }[] }[] = [];
+  const allMatchedAgents = new Set<string>();
+
+  for (const file of filesToMatch) {
+    const fileMatches: { pattern: string; agents: string[]; description: string }[] = [];
+
+    for (const rule of CONTEXTUAL_RULES) {
+      if (matchPattern(file, rule.pattern)) {
+        fileMatches.push({
+          pattern: rule.pattern,
+          agents: rule.agents,
+          description: rule.description
+        });
+        rule.agents.forEach(agent => allMatchedAgents.add(agent));
+      }
+    }
+
+    matches.push({
+      file,
+      matchedRules: fileMatches.length > 0 ? fileMatches : [{
+        pattern: "default",
+        agents: [DEFAULT_AGENT],
+        description: "Default agent - no specific pattern matched"
+      }]
+    });
+
+    // Add default agent if no matches
+    if (fileMatches.length === 0) {
+      allMatchedAgents.add(DEFAULT_AGENT);
+    }
+  }
+
+  // Get unique agents sorted by frequency of match
+  const agentFrequency: Record<string, number> = {};
+  for (const match of matches) {
+    for (const rule of match.matchedRules) {
+      for (const agent of rule.agents) {
+        agentFrequency[agent] = (agentFrequency[agent] || 0) + 1;
+      }
+    }
+  }
+
+  const recommendedAgents = Object.entries(agentFrequency)
+    .sort((a, b) => b[1] - a[1])
+    .map(([agent, count]) => ({ agent, matchCount: count }));
+
+  // Build response
+  const response: any = {
+    summary: {
+      total_files: filesToMatch.length,
+      unique_agents_matched: allMatchedAgents.size,
+      primary_agent: recommendedAgents[0]?.agent || DEFAULT_AGENT
+    },
+    recommended_agents: recommendedAgents,
+    file_matches: matches,
+    usage_context: {
+      step: 6,
+      step_name: "Tech-Stack Review",
+      description: "Use these agents for technology-specific code review",
+      sdlc_phase: "4-Angle Internal Review"
+    }
+  };
+
+  // Optionally include agent details
+  if (include_agent_details) {
+    const agentService = ServiceFactory.createAgentService();
+    const agentDetails: Record<string, any> = {};
+
+    for (const agent of Array.from(allMatchedAgents)) {
+      try {
+        const profile = await agentService.loadVishkarAgent(agent);
+        if (profile) {
+          agentDetails[agent] = {
+            name: profile.name || agent,
+            specializations: profile.specializations || [],
+            description: profile.description || "Specialized review agent",
+            type: profile.type
+          };
+        } else {
+          agentDetails[agent] = {
+            name: agent,
+            description: "Agent profile not found - use load_vishkar_agent to get details"
+          };
+        }
+      } catch {
+        agentDetails[agent] = {
+          name: agent,
+          description: "Agent profile not found - use load_vishkar_agent to get details"
+        };
+      }
+    }
+    response.agent_details = agentDetails;
+  }
+
+  return response;
+}
+
 // MCP Server Info
 const SERVER_INFO = {
   name: 'enhanced-context-mcp',
-  version: '1.6.0'
+  version: '2.0.0'
 };
 
 // MCP Protocol Version
@@ -1129,6 +1418,10 @@ async function executeTool(toolName: string, args: any): Promise<{ success: bool
 
       case 'update_agent':
         result = await enhancedContextService.updateAgent(args || {});
+        break;
+
+      case 'get_contextual_agent':
+        result = await handleContextualAgent(args || {});
         break;
 
       default:
