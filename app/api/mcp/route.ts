@@ -6,6 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ServiceFactory } from '../../../lib/services/ServiceFactory';
 import ConfigLoader from '../../../lib/config/configLoader';
+import {
+  loadStandardFromFile,
+  loadAllStandards,
+  loadHelperScripts,
+  getStandardsInfo,
+  AVAILABLE_SECTIONS
+} from '../../../lib/services/StandardsService';
 
 // MCP Ecosystem Data - Comprehensive guide to all MCPs
 const MCP_ECOSYSTEM = {
@@ -570,6 +577,24 @@ function handleGetStarted(args: { include_examples?: boolean }) {
         description: "Intent-based context loading with smart selection",
         parameters: ["query", "task_intent", "scope", "complexity", "domain_focus"]
       }
+    },
+
+    utilities: {
+      repository: "https://github.com/premkalyan/enhanced-context-mcp",
+      description: "This repository contains helper scripts and standards files for VISHKAR development",
+      contents: {
+        standards: ".standards/*.md - Engineering standards markdown files (source of truth)",
+        mcp_scripts: "scripts/mcp/*.sh - Shell scripts for calling VISHKAR MCPs",
+        db_scripts: "scripts/db/*.sh - Database query utilities",
+        setup_scripts: "scripts/setup/*.sh - Project setup scripts"
+      },
+      usage: {
+        clone: "git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils",
+        set_api_key: "export VISHKAR_API_KEY=pk_xxx",
+        make_executable: "chmod +x vishkar-utils/scripts/mcp/*.sh",
+        example: "./vishkar-utils/scripts/mcp/jira.sh '{\"tool\":\"search_issues\",\"arguments\":{\"jql\":\"project=PROJ\"}}'"
+      },
+      note: "Standards are also served via get_engineering_standards tool for programmatic access"
     },
 
     sdlc_overview: {
@@ -1411,8 +1436,79 @@ async function handleContextualAgent(args: { file_paths?: string[]; file_path?: 
 }
 
 // Handler for Engineering Standards - Comprehensive coding standards and best practices
-function handleEngineeringStandards(args: { section?: string; format?: string }) {
+async function handleEngineeringStandards(args: { section?: string; format?: string }) {
   const { section = 'all', format = 'markdown' } = args;
+
+  // For 'markdown' format, read directly from .standards/ files
+  if (format === 'markdown') {
+    try {
+      if (section === 'all') {
+        const allStandards = await loadAllStandards();
+        return {
+          format: 'markdown',
+          section: 'all',
+          source: 'file-based (.standards/)',
+          standards_info: getStandardsInfo(),
+          content: allStandards,
+          usage: {
+            specific_section: "get_engineering_standards({ section: 'python' }) for Python standards",
+            files_format: "get_engineering_standards({ format: 'files' }) to get file paths",
+            distribution: "get_engineering_standards({ format: 'distribution' }) for complete package",
+            for_llm: "Read .standards/ directory before implementing features"
+          }
+        };
+      } else {
+        const content = await loadStandardFromFile(section);
+        return {
+          format: 'markdown',
+          section,
+          source: 'file-based (.standards/)',
+          content,
+          available_sections: AVAILABLE_SECTIONS
+        };
+      }
+    } catch (error) {
+      // Fall through to hardcoded content if file reading fails
+      console.warn('File-based loading failed, using hardcoded content:', error);
+    }
+  }
+
+  // For 'files' format, list available files
+  if (format === 'files') {
+    try {
+      if (section !== 'all') {
+        const content = await loadStandardFromFile(section);
+        const fileName = section === 'overview' ? 'README.md' : `${section}.md`;
+        return {
+          format: 'files',
+          section,
+          source: 'file-based (.standards/)',
+          file: {
+            name: fileName,
+            path: `.standards/${fileName}`,
+            content
+          }
+        };
+      }
+      // For all sections, load all files
+      const allStandards = await loadAllStandards();
+      return {
+        format: 'files',
+        source: 'file-based (.standards/)',
+        description: "Files from .standards/ directory",
+        files: Object.entries(allStandards).map(([section, content]) => ({
+          name: section === 'overview' ? 'README.md' : `${section}.md`,
+          path: `.standards/${section === 'overview' ? 'README.md' : `${section}.md`}`,
+          content
+        })),
+        standards_info: getStandardsInfo()
+      };
+    } catch (error) {
+      console.warn('File-based loading failed, using hardcoded content:', error);
+    }
+  }
+
+  // Hardcoded fallback (for JSON format and when files unavailable)
 
   // Engineering Standards v1.0.0 - Comprehensive standards based on spec
   const STANDARDS = {
@@ -2315,7 +2411,7 @@ ls -la .standards/
 // MCP Server Info
 const SERVER_INFO = {
   name: 'enhanced-context-mcp',
-  version: '2.1.0'
+  version: '2.2.0'
 };
 
 // MCP Protocol Version
@@ -2391,7 +2487,7 @@ async function executeTool(toolName: string, args: any): Promise<{ success: bool
         break;
 
       case 'get_engineering_standards':
-        result = handleEngineeringStandards(args || {});
+        result = await handleEngineeringStandards(args || {});
         break;
 
       default:
