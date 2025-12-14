@@ -501,8 +501,8 @@ const TOOLS = [
         },
         format: {
           type: 'string',
-          enum: ['markdown', 'files', 'json'],
-          description: 'Output format: markdown (readable documentation), files (file contents for .standards/ directory), json (structured data). Default: markdown'
+          enum: ['markdown', 'files', 'json', 'confluence', 'distribution'],
+          description: 'Output format: markdown (readable), files (for .standards/), json (structured), confluence (XHTML for Confluence pages), distribution (complete package with repo files + Confluence content + page hierarchy)'
         }
       },
       required: []
@@ -545,8 +545,15 @@ function handleGetStarted(args: { include_examples?: boolean }) {
         tool: "get_engineering_standards",
         description: "Comprehensive coding standards for Python, FastAPI, Database, Testing, Frontend, Security, Code Quality",
         sections: ["overview", "python", "fastapi", "database", "testing", "frontend", "security", "code_quality", "all"],
-        formats: ["markdown", "files", "json"],
-        usage: "Fetch with format='files' to create .standards/ directory, LLMs read before implementation"
+        formats: ["markdown", "files", "json", "confluence", "distribution"],
+        usage: "Use format='distribution' for complete package (repo files + Confluence content + workflow)",
+        distribution_workflow: [
+          "1. get_engineering_standards({ format: 'distribution' })",
+          "2. Save repo_files to .standards/",
+          "3. Create Confluence pages using confluence_pages data",
+          "4. Team reviews in Confluence, customizes .standards/",
+          "5. LLMs read .standards/ before implementation"
+        ]
       },
       agents: {
         tool: "list_vishkar_agents",
@@ -683,6 +690,35 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
         escalation_trigger: "After 3 failed retries, escalate to human",
         critical_issues_allowed: 0,
         high_issues_allowed: 0
+      }
+    },
+
+    prerequisites: {
+      description: "Setup steps before starting SDLC workflow",
+      standards_distribution: {
+        purpose: "Establish engineering standards for consistent code quality",
+        when: "Before first sprint or when onboarding new project",
+        workflow: [
+          "1. Fetch standards: get_engineering_standards({ format: 'distribution' })",
+          "2. Create .standards/ directory in repository",
+          "3. Save repo_files to .standards/",
+          "4. Create Engineering Standards page hierarchy in Confluence",
+          "5. Team reviews standards in Confluence (add comments/feedback)",
+          "6. Customize .standards/ based on team feedback",
+          "7. Commit .standards/ to repository",
+          "8. LLMs read .standards/ before each implementation task"
+        ],
+        tools: {
+          fetch: "get_engineering_standards({ format: 'distribution' })",
+          confluence_pages: "confluence_mcp.create_page",
+          team_review: "Confluence comments and inline feedback"
+        },
+        result: "Consistent coding standards accessible to both humans (Confluence) and LLMs (.standards/)"
+      },
+      lessons_learned_setup: {
+        purpose: "Enable continuous learning from past mistakes",
+        files: [".reviews/lessons_learned.json", ".reviews/findings/"],
+        workflow: "After each review cycle, add new lessons to lessons_learned.json"
       }
     },
 
@@ -1854,6 +1890,279 @@ ${STANDARDS.code_quality.sections.dry.description}
     };
   };
 
+  // Generate Confluence XHTML content for each standard
+  const generateConfluenceContent = () => {
+    return {
+      parent: {
+        title: "Engineering Standards",
+        content: `<ac:structured-macro ac:name="info"><ac:rich-text-body>
+<p><strong>Version:</strong> ${STANDARDS.version} | <strong>Last Updated:</strong> ${STANDARDS.last_updated}</p>
+</ac:rich-text-body></ac:structured-macro>
+
+<h2>Purpose</h2>
+<p>${STANDARDS.overview.purpose}</p>
+
+<h2>Principles</h2>
+<ac:structured-macro ac:name="panel"><ac:rich-text-body>
+<ul>
+${STANDARDS.overview.principles.map(p => `<li><strong>${p.name}</strong>: ${p.description}</li>`).join('\n')}
+</ul>
+</ac:rich-text-body></ac:structured-macro>
+
+<h2>Technology Scope</h2>
+<table>
+<tr><th>Layer</th><th>Technologies</th></tr>
+<tr><td>Backend</td><td>${STANDARDS.overview.scope.backend}</td></tr>
+<tr><td>Frontend</td><td>${STANDARDS.overview.scope.frontend}</td></tr>
+<tr><td>Database</td><td>${STANDARDS.overview.scope.database}</td></tr>
+<tr><td>Testing</td><td>${STANDARDS.overview.scope.testing}</td></tr>
+<tr><td>Infrastructure</td><td>${STANDARDS.overview.scope.infrastructure}</td></tr>
+</table>
+
+<h2>Child Pages</h2>
+<ac:structured-macro ac:name="children"><ac:parameter ac:name="all">true</ac:parameter></ac:structured-macro>`
+      },
+      children: [
+        {
+          title: "Python Backend Standards",
+          order: 1,
+          content: `<ac:structured-macro ac:name="toc"/><h2>Version</h2><p>Python ${STANDARDS.python.version}</p>
+
+<h2>Import Ordering</h2>
+<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">python</ac:parameter><ac:plain-text-body><![CDATA[# 1. Standard library
+import asyncio
+from datetime import datetime
+
+# 2. Third-party packages
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+# 3. Local application
+from src.core.config import settings]]></ac:plain-text-body></ac:structured-macro>
+
+<h2>Type Hints</h2>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body>
+<p><strong>Required everywhere</strong> - functions, methods, class attributes</p>
+</ac:rich-text-body></ac:structured-macro>
+
+<h2>Async Patterns</h2>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body>
+<p><strong>CRITICAL:</strong> ${STANDARDS.python.sections.async_patterns.critical_rule}</p>
+</ac:rich-text-body></ac:structured-macro>
+
+<h2>Naming Conventions</h2>
+<table>
+<tr><th>Element</th><th>Convention</th><th>Example</th></tr>
+<tr><td>Modules</td><td>snake_case</td><td>customer_service.py</td></tr>
+<tr><td>Classes</td><td>PascalCase</td><td>CustomerService</td></tr>
+<tr><td>Functions</td><td>snake_case</td><td>get_customer_by_id</td></tr>
+<tr><td>Constants</td><td>UPPER_SNAKE</td><td>MAX_RETRY_COUNT</td></tr>
+</table>`
+        },
+        {
+          title: "FastAPI Standards",
+          order: 2,
+          content: `<ac:structured-macro ac:name="toc"/><h2>Router Organization</h2>
+<p>Pattern: <code>src/api/v1/routes/{resource}.py</code></p>
+
+<h2>CORS Configuration</h2>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body>
+<p><strong>CRITICAL:</strong> ${STANDARDS.fastapi.sections.cors.critical}</p>
+</ac:rich-text-body></ac:structured-macro>
+
+<h2>Response Models</h2>
+<p>Always use response_model for type safety and documentation.</p>
+
+<h2>Error Handling</h2>
+<table>
+<tr><th>Type</th><th>Pattern</th></tr>
+<tr><td>Validation</td><td>Let Pydantic handle (422 automatic)</td></tr>
+<tr><td>Business Logic</td><td>HTTPException(status_code=400)</td></tr>
+<tr><td>Not Found</td><td>HTTPException(status_code=404)</td></tr>
+</table>`
+        },
+        {
+          title: "Database Standards",
+          order: 3,
+          content: `<ac:structured-macro ac:name="toc"/><h2>SQLAlchemy Naming Convention</h2>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body>
+<p><strong>CRITICAL:</strong> Define naming convention for proper Alembic migrations</p>
+</ac:rich-text-body></ac:structured-macro>
+
+<h2>Connection Pooling</h2>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body>
+<p><strong>CRITICAL:</strong> Always use connection pooling in async applications</p>
+</ac:rich-text-body></ac:structured-macro>
+<table>
+<tr><th>Setting</th><th>Value</th></tr>
+<tr><td>pool_size</td><td>${STANDARDS.database.sections.connection_pooling.config.pool_size}</td></tr>
+<tr><td>max_overflow</td><td>${STANDARDS.database.sections.connection_pooling.config.max_overflow}</td></tr>
+<tr><td>pool_pre_ping</td><td>${STANDARDS.database.sections.connection_pooling.config.pool_pre_ping}</td></tr>
+</table>
+
+<h2>Raw SQL</h2>
+<p>${STANDARDS.database.sections.raw_sql.rule}</p>`
+        },
+        {
+          title: "Testing Standards",
+          order: 4,
+          content: `<ac:structured-macro ac:name="toc"/><h2>Directory Structure</h2>
+<ul>
+<li><code>tests/unit/</code> - No external dependencies, mocked</li>
+<li><code>tests/integration/</code> - With DB/Redis</li>
+<li><code>tests/e2e/</code> - Full stack</li>
+</ul>
+
+<h2>Test Categorization</h2>
+<table>
+<tr><th>Category</th><th>Marker</th><th>Dependencies</th></tr>
+<tr><td>Unit</td><td>@pytest.mark.unit</td><td>None (mocked)</td></tr>
+<tr><td>Integration</td><td>@pytest.mark.integration</td><td>DB, Redis</td></tr>
+<tr><td>E2E</td><td>@pytest.mark.e2e</td><td>Full stack</td></tr>
+</table>
+
+<h2>Naming Convention</h2>
+<p>Pattern: <code>test_&lt;what&gt;_&lt;condition&gt;_&lt;expected_result&gt;</code></p>
+
+<h2>Coverage Threshold</h2>
+<ac:structured-macro ac:name="info"><ac:rich-text-body>
+<p><strong>Minimum: ${STANDARDS.testing.sections.coverage_threshold}%</strong></p>
+</ac:rich-text-body></ac:structured-macro>`
+        },
+        {
+          title: "Frontend Standards",
+          order: 5,
+          content: `<ac:structured-macro ac:name="toc"/><h2>Next.js App Router</h2>
+<ul>
+<li><code>layout.tsx</code> - Root layout</li>
+<li><code>page.tsx</code> - Page component</li>
+<li>Route groups - <code>(auth)/</code> syntax</li>
+</ul>
+
+<h2>Server vs Client Components</h2>
+<table>
+<tr><th>Type</th><th>Usage</th></tr>
+<tr><td>Server (default)</td><td>Can fetch data directly, no directive needed</td></tr>
+<tr><td>Client</td><td>'use client' directive for useState, useEffect</td></tr>
+</table>
+
+<h2>TypeScript Config</h2>
+<ul>
+<li><code>strict: true</code></li>
+<li><code>target: ES2022</code></li>
+</ul>`
+        },
+        {
+          title: "Security Standards",
+          order: 6,
+          content: `<ac:structured-macro ac:name="toc"/><h2>OWASP API Security Top 10</h2>
+<table>
+<tr><th>Risk</th><th>Mitigation</th><th>Implementation</th></tr>
+${STANDARDS.security.sections.owasp_checklist.map(item => `<tr><td>${item.risk}</td><td>${item.mitigation}</td><td>${item.implementation}</td></tr>`).join('\n')}
+</table>
+
+<h2>Secrets Management</h2>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body>
+<p><strong>${STANDARDS.security.sections.secrets_management.rule}</strong></p>
+<p>Use: ${STANDARDS.security.sections.secrets_management.use}</p>
+</ac:rich-text-body></ac:structured-macro>`
+        },
+        {
+          title: "Code Quality Standards",
+          order: 7,
+          content: `<ac:structured-macro ac:name="toc"/><h2>SOLID Principles</h2>
+<table>
+<tr><th>Principle</th><th>Description</th><th>Example</th></tr>
+${STANDARDS.code_quality.sections.solid_principles.map(p => `<tr><td>${p.principle}</td><td>${p.description}</td><td>${p.example}</td></tr>`).join('\n')}
+</table>
+
+<h2>DRY (Don't Repeat Yourself)</h2>
+<p>${STANDARDS.code_quality.sections.dry.description}</p>
+
+<h2>Linting</h2>
+<ul>
+<li>Tool: ${STANDARDS.code_quality.sections.linting.tool}</li>
+<li>Line length: ${STANDARDS.code_quality.sections.linting.config.line_length}</li>
+</ul>`
+        }
+      ]
+    };
+  };
+
+  // Page structure for Confluence hierarchy
+  const pageStructure = {
+    parent_page: {
+      title: "Engineering Standards",
+      description: "Root page containing all engineering standards"
+    },
+    child_pages: [
+      { order: 1, title: "Python Backend Standards", section: "python" },
+      { order: 2, title: "FastAPI Standards", section: "fastapi" },
+      { order: 3, title: "Database Standards", section: "database" },
+      { order: 4, title: "Testing Standards", section: "testing" },
+      { order: 5, title: "Frontend Standards", section: "frontend" },
+      { order: 6, title: "Security Standards", section: "security" },
+      { order: 7, title: "Code Quality Standards", section: "code_quality" }
+    ]
+  };
+
+  // Distribution workflow
+  const distributionWorkflow = {
+    overview: "Complete workflow for distributing engineering standards to both repository and Confluence",
+    steps: [
+      {
+        step: 1,
+        action: "Fetch standards",
+        tool: "get_engineering_standards",
+        args: { format: "distribution" },
+        description: "Get complete distribution package with repo files and Confluence content"
+      },
+      {
+        step: 2,
+        action: "Create .standards/ directory in repo",
+        files: [".standards/README.md", ".standards/python.md", ".standards/fastapi.md", ".standards/database.md", ".standards/testing.md", ".standards/frontend.md", ".standards/security.md", ".standards/code_quality.md", ".standards/lessons_learned.json"],
+        description: "Save markdown files to .standards/ directory for LLM reference"
+      },
+      {
+        step: 3,
+        action: "Create parent page in Confluence",
+        tool: "confluence_mcp.create_page",
+        args: { title: "Engineering Standards", content: "<parent_content>" },
+        description: "Create the root Engineering Standards page"
+      },
+      {
+        step: 4,
+        action: "Create child pages in Confluence",
+        tool: "confluence_mcp.create_page",
+        loop: "For each child page in order",
+        args: { title: "<child_title>", content: "<child_content>", parentId: "<parent_page_id>" },
+        description: "Create each standard as a child page under Engineering Standards"
+      },
+      {
+        step: 5,
+        action: "Team review in Confluence",
+        description: "Teams review and comment on standards in Confluence. Use Confluence comments for feedback."
+      },
+      {
+        step: 6,
+        action: "Customize locally",
+        description: "After team approval, customize .standards/ files based on team feedback and commit to repo"
+      }
+    ],
+    automation_script: `# Automated distribution script (run after fetching standards)
+# 1. Create .standards/ directory
+mkdir -p .standards
+
+# 2. Use Claude Code or LLM to:
+#    - Save each file from distribution.repo_files to .standards/
+#    - Create Confluence parent page using confluence_mcp.create_page
+#    - Create child pages with parentId from parent page response
+
+# 3. Verify setup
+ls -la .standards/
+# Should show: README.md, python.md, fastapi.md, database.md, testing.md, frontend.md, security.md, code_quality.md, lessons_learned.json`
+  };
+
   // Return based on section and format
   const getSection = (sectionName: string) => {
     switch (sectionName) {
@@ -1917,6 +2226,75 @@ ${STANDARDS.code_quality.sections.dry.description}
     };
   }
 
+  // Confluence format - returns XHTML content ready for Confluence pages
+  if (format === 'confluence') {
+    const confluenceContent = generateConfluenceContent();
+    return {
+      format: 'confluence',
+      description: "XHTML content formatted for Confluence storage format",
+      page_structure: pageStructure,
+      content: confluenceContent,
+      usage: {
+        create_parent: "Use confluence_mcp.create_page with content.parent",
+        create_children: "Loop through content.children and create each with parentId",
+        note: "Content uses Confluence macros: info, warning, panel, code, toc, children"
+      }
+    };
+  }
+
+  // Distribution format - complete package for repo + Confluence distribution
+  if (format === 'distribution') {
+    const files = generateFileContents();
+    const confluenceContent = generateConfluenceContent();
+
+    return {
+      format: 'distribution',
+      version: STANDARDS.version,
+      description: "Complete distribution package with repo files + Confluence content + workflow",
+
+      // Repository files
+      repo_files: Object.entries(files).map(([name, content]) => ({
+        name,
+        path: `.standards/${name}`,
+        content
+      })),
+
+      // Confluence pages
+      confluence_pages: {
+        parent: confluenceContent.parent,
+        children: confluenceContent.children
+      },
+
+      // Page hierarchy metadata
+      page_structure: pageStructure,
+
+      // Distribution workflow
+      workflow: distributionWorkflow,
+
+      // Quick reference for automation
+      automation: {
+        repo_directory: ".standards/",
+        confluence_parent_title: "Engineering Standards",
+        total_pages: 1 + confluenceContent.children.length,
+        mcp_tools: {
+          create_page: "confluence_mcp.create_page",
+          get_page: "confluence_mcp.get_content_by_space_and_title"
+        }
+      },
+
+      // Next steps
+      next_steps: [
+        "1. Create .standards/ directory: mkdir -p .standards",
+        "2. Save each repo_file to .standards/",
+        "3. Create Confluence parent page using confluence_pages.parent",
+        "4. Create each child page with parentId from parent response",
+        "5. Share Confluence pages with team for review",
+        "6. Update .standards/ based on team feedback",
+        "7. Commit .standards/ to repository"
+      ]
+    };
+  }
+
   // Default: markdown format
   const sectionData = getSection(section);
   return {
@@ -1927,6 +2305,8 @@ ${STANDARDS.code_quality.sections.dry.description}
     usage: {
       fetch_all: "get_engineering_standards({ format: 'files' }) to get all files for .standards/",
       specific_section: "get_engineering_standards({ section: 'python' }) for Python standards",
+      confluence: "get_engineering_standards({ format: 'confluence' }) for Confluence XHTML",
+      distribution: "get_engineering_standards({ format: 'distribution' }) for complete package",
       for_llm: "Read .standards/ directory before implementing features"
     }
   };
