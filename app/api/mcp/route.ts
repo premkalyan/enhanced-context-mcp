@@ -1237,12 +1237,13 @@ async function handleContextualAgent(args: { file_paths?: string[]; file_path?: 
   // Simple glob pattern matching function
   function matchPattern(filePath: string, pattern: string): boolean {
     // Convert glob pattern to regex
+    // IMPORTANT: Escape dots FIRST before converting glob patterns
     const regexPattern = pattern
-      .replace(/\*\*/g, '{{GLOBSTAR}}')  // Preserve ** for later
+      .replace(/\./g, '\\.')              // Escape dots first (before glob conversion)
+      .replace(/\*\*/g, '{{GLOBSTAR}}')   // Preserve ** for later
       .replace(/\*/g, '[^/]*')            // * matches anything except /
       .replace(/{{GLOBSTAR}}/g, '.*')     // ** matches anything including /
-      .replace(/\?/g, '.')                // ? matches single char
-      .replace(/\./g, '\\.');             // Escape dots
+      .replace(/\?/g, '.');               // ? matches single char
 
     const regex = new RegExp(`^${regexPattern}$`);
     return regex.test(filePath);
