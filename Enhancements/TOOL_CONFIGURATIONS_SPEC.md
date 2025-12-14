@@ -103,7 +103,7 @@ curl -X POST https://enhanced-context-mcp.vercel.app/api/mcp \
 
 Or use the setup script:
 ```bash
-./scripts/setup/init_standards.sh
+./.vishkar-utils/scripts/setup/init_standards.sh
 ```
 ```
 

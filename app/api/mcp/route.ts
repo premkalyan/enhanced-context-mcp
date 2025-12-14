@@ -514,6 +514,45 @@ const TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'get_helper_scripts',
+    description: 'Get information about VISHKAR helper scripts for MCP operations, database queries, and project setup. These scripts are available in the enhanced-context-mcp repository and can be cloned locally for easy MCP interactions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['mcp', 'db', 'setup', 'all'],
+          description: 'Category of scripts to retrieve: mcp (MCP interaction scripts), db (database query scripts), setup (project setup scripts), all (everything)'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_tool_configuration',
+    description: 'Get configuration/instructions for AI coding tools to enforce engineering standards. Returns tool-specific config files (CLAUDE.md for Claude Code, .cursorrules for Cursor, .aider.conf.yml for Aider, etc.) that instruct LLMs to read .standards/ before implementing code.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tool: {
+          type: 'string',
+          enum: ['claude', 'cursor', 'aider', 'goose', 'copilot', 'all'],
+          description: 'The AI coding tool to get configuration for'
+        },
+        project_type: {
+          type: 'string',
+          enum: ['python_backend', 'fastapi', 'nextjs', 'fullstack', 'generic'],
+          description: 'Type of project for context-specific instructions'
+        },
+        include_standards: {
+          type: 'boolean',
+          description: 'Include full engineering standards reference in the config (default: true)'
+        }
+      },
+      required: ['tool']
+    }
   }
 ];
 
@@ -576,6 +615,25 @@ function handleGetStarted(args: { include_examples?: boolean }) {
         tool: "load_enhanced_context",
         description: "Intent-based context loading with smart selection",
         parameters: ["query", "task_intent", "scope", "complexity", "domain_focus"]
+      },
+      helper_scripts: {
+        tool: "get_helper_scripts",
+        description: "Shell scripts for calling VISHKAR MCPs, database queries, and project setup",
+        categories: ["mcp", "db", "setup", "all"],
+        usage: "Clone repo and use scripts for easy MCP interactions from terminal"
+      },
+      tool_configuration: {
+        tool: "get_tool_configuration",
+        description: "Configuration files for AI coding tools to enforce engineering standards",
+        supported_tools: ["claude", "cursor", "aider", "goose", "copilot", "all"],
+        files_generated: {
+          claude: "CLAUDE.md",
+          cursor: ".cursorrules",
+          aider: ".aider.conf.yml",
+          goose: ".goose/config.yaml",
+          copilot: ".github/copilot-instructions.md"
+        },
+        usage: "Get config for your AI tool, save to project, tool reads .standards/ automatically"
       }
     },
 
@@ -2408,10 +2466,251 @@ ls -la .standards/
   };
 }
 
+// Handler for Helper Scripts
+async function handleHelperScripts(args: { category?: string }) {
+  const { category = 'all' } = args;
+
+  return await loadHelperScripts(category as 'mcp' | 'db' | 'setup' | 'all');
+}
+
+// Handler for Tool Configuration - returns AI tool configs (CLAUDE.md, .cursorrules, etc.)
+function handleToolConfiguration(args: { tool?: string; project_type?: string; include_standards?: boolean }) {
+  const { tool = 'claude', project_type = 'generic', include_standards = true } = args;
+
+  // Standards reference block (included if include_standards is true)
+  const standardsBlock = include_standards ? `
+## Standards Reference
+
+| Task Type | Required Reading |
+|-----------|------------------|
+| Python backend | \`.standards/python.md\` |
+| FastAPI/API routes | \`.standards/fastapi.md\` |
+| Database/SQLAlchemy | \`.standards/database.md\` |
+| Testing | \`.standards/testing.md\` |
+| Security | \`.standards/security.md\` |
+| Frontend/React | \`.standards/frontend.md\` |
+| Refactoring | \`.standards/code_quality.md\` |
+
+### Enforcement Rules (NON-NEGOTIABLE)
+
+1. **Type Hints**: ALL functions MUST have complete type hints
+2. **Async**: NEVER block the event loop - always use async/await for I/O
+3. **Database**: Always use \`text()\` for raw SQL, use connection pooling
+4. **Testing**: Use pytest markers (@pytest.mark.unit, etc.), maintain 80%+ coverage
+5. **Security**: Follow OWASP API Top 10, validate all inputs with Pydantic
+6. **Error Handling**: Use specific exceptions, sanitize error messages
+` : '';
+
+  // CLAUDE.md content
+  const CLAUDE_MD_CONTENT = `# Engineering Standards Enforcement
+
+## MANDATORY: Read Before Implementing
+
+Before writing ANY code, you MUST read the relevant engineering standards from \`.standards/\` directory.
+
+${standardsBlock}
+
+### Code Review Checklist
+
+When reviewing code, verify:
+- [ ] Type hints on all functions
+- [ ] No blocking calls in async functions
+- [ ] Parameterized queries (no SQL injection)
+- [ ] Input validation with Pydantic
+- [ ] Proper error handling
+- [ ] Test coverage adequate
+
+### Getting Standards
+
+If \`.standards/\` directory doesn't exist, fetch from Enhanced Context MCP:
+\`\`\`bash
+curl -X POST https://enhanced-context-mcp.vercel.app/api/mcp \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_KEY" \\
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_engineering_standards","arguments":{"format":"files"}},"id":1}'
+\`\`\`
+
+Or clone the repository:
+\`\`\`bash
+git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils
+cp -r vishkar-utils/.standards/ .standards/
+\`\`\`
+`;
+
+  // .cursorrules content
+  const CURSOR_RULES_CONTENT = `# Cursor Rules - Engineering Standards
+
+## Always Read Standards First
+
+Before implementing any code, read the relevant standard from \`.standards/\`:
+- Python: .standards/python.md
+- FastAPI: .standards/fastapi.md
+- Database: .standards/database.md
+- Testing: .standards/testing.md
+- Security: .standards/security.md
+- Frontend: .standards/frontend.md
+
+## Code Quality Rules
+
+- All functions must have type hints
+- Never block async event loop
+- Use parameterized queries
+- Validate inputs with Pydantic
+- Minimum 80% test coverage
+
+## When Reviewing Code
+
+Check against .standards/code_quality.md and .standards/security.md
+`;
+
+  // .aider.conf.yml content
+  const AIDER_CONFIG_CONTENT = `# Aider configuration for engineering standards enforcement
+
+# Always read these files for context
+read:
+  - .standards/README.md
+  - .standards/python.md
+  - .standards/testing.md
+  - .standards/security.md
+
+# Auto-commits disabled for review
+auto-commits: false
+attribute-author: false
+
+# Custom instructions
+extra-context: |
+  IMPORTANT: Follow engineering standards in .standards/ directory.
+  - All functions need type hints
+  - Use async/await for I/O operations
+  - Follow OWASP security guidelines
+  - Write tests for all new functionality
+`;
+
+  // .goose/config.yaml content
+  const GOOSE_CONFIG_CONTENT = `# Goose AI configuration for engineering standards
+
+context:
+  read_files:
+    - .standards/README.md
+    - .standards/python.md
+    - .standards/testing.md
+
+rules:
+  - Always read .standards/ before implementing code
+  - Follow type hint conventions in python.md
+  - Follow security guidelines in security.md
+  - Write tests following testing.md patterns
+`;
+
+  // GitHub Copilot instructions
+  const COPILOT_INSTRUCTIONS_CONTENT = `# GitHub Copilot Instructions
+
+## Engineering Standards
+
+This project follows engineering standards defined in \`.standards/\` directory.
+
+Before suggesting code:
+1. Reference patterns from .standards/*.md files
+2. Ensure type hints on all functions
+3. Use async/await for I/O operations
+4. Follow OWASP security guidelines
+5. Include appropriate test suggestions
+
+## Project Type: ${project_type}
+
+Follow conventions specific to this project type when suggesting code.
+`;
+
+  const configs: Record<string, any> = {
+    claude: {
+      filename: 'CLAUDE.md',
+      location: 'Project root',
+      content: CLAUDE_MD_CONTENT,
+      instructions: 'Save to CLAUDE.md in project root. Claude Code reads this automatically.',
+      auto_loaded: true
+    },
+    cursor: {
+      filename: '.cursorrules',
+      location: 'Project root',
+      content: CURSOR_RULES_CONTENT,
+      instructions: 'Save to .cursorrules in project root. Cursor reads this automatically.',
+      auto_loaded: true
+    },
+    aider: {
+      filename: '.aider.conf.yml',
+      location: 'Project root',
+      content: AIDER_CONFIG_CONTENT,
+      instructions: 'Save to .aider.conf.yml in project root. Aider reads this on startup.',
+      auto_loaded: true
+    },
+    goose: {
+      filename: '.goose/config.yaml',
+      location: '.goose directory',
+      content: GOOSE_CONFIG_CONTENT,
+      instructions: 'Create .goose directory and save config.yaml inside.',
+      auto_loaded: true
+    },
+    copilot: {
+      filename: '.github/copilot-instructions.md',
+      location: '.github directory',
+      content: COPILOT_INSTRUCTIONS_CONTENT,
+      instructions: 'Create .github directory if needed and save copilot-instructions.md inside.',
+      auto_loaded: false,
+      note: 'Copilot has limited support for project-level instructions'
+    }
+  };
+
+  // Return all configs if 'all' requested
+  if (tool === 'all') {
+    return {
+      project_type,
+      include_standards,
+      configs,
+      setup_workflow: [
+        "1. Choose your AI coding tool",
+        "2. Save the corresponding config file to your project",
+        "3. Fetch engineering standards: get_engineering_standards({ format: 'files' })",
+        "4. Save standards to .standards/ directory",
+        "5. AI tool will now reference standards before implementing code"
+      ],
+      standards_injection_library: {
+        location: "lib/standards-injection/",
+        files: ["inject-standards.ts", "README.md"],
+        description: "Utility library for programmatically injecting standards into LLM prompts",
+        usage: "Import and use in your backend to ensure any LLM follows standards"
+      }
+    };
+  }
+
+  // Return specific tool config
+  const config = configs[tool];
+  if (!config) {
+    return {
+      error: `Unknown tool: ${tool}. Available tools: claude, cursor, aider, goose, copilot, all`,
+      available_tools: Object.keys(configs)
+    };
+  }
+
+  return {
+    tool,
+    project_type,
+    ...config,
+    other_tools: Object.entries(configs)
+      .filter(([k]) => k !== tool)
+      .reduce((acc, [k, v]) => ({ ...acc, [k]: { filename: v.filename, available: true } }), {}),
+    next_steps: [
+      `1. Save content to ${config.filename}`,
+      "2. Run: get_engineering_standards({ format: 'files' })",
+      "3. Save standards to .standards/ directory",
+      `4. ${config.instructions.split('.')[0]}`
+    ]
+  };
+}
+
 // MCP Server Info
 const SERVER_INFO = {
   name: 'enhanced-context-mcp',
-  version: '2.2.0'
+  version: '2.3.0'
 };
 
 // MCP Protocol Version
@@ -2488,6 +2787,14 @@ async function executeTool(toolName: string, args: any): Promise<{ success: bool
 
       case 'get_engineering_standards':
         result = await handleEngineeringStandards(args || {});
+        break;
+
+      case 'get_helper_scripts':
+        result = await handleHelperScripts(args || {});
+        break;
+
+      case 'get_tool_configuration':
+        result = handleToolConfiguration(args || {});
         break;
 
       default:

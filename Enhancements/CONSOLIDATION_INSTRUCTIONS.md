@@ -49,14 +49,14 @@ Update the `get_started` tool response to include information about the scripts 
   "quick_start": {
     "step_4": {
       "action": "Clone helper scripts and standards",
-      "command": "git clone https://github.com/premkalyan/enhanced-context-mcp.git",
-      "details": "Contains scripts/mcp/ for MCP helpers, .standards/ for coding standards"
+      "command": "git clone https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils",
+      "details": "Contains .vishkar-utils/scripts/mcp/ for MCP helpers, .vishkar-utils/.standards/ for coding standards"
     }
   },
   "utilities": {
-    "helper_scripts": "scripts/mcp/*.sh - Shell scripts for calling MCPs",
-    "standards": ".standards/*.md - Engineering standards for LLM reference",
-    "setup": "scripts/setup/*.sh - Project setup utilities"
+    "helper_scripts": ".vishkar-utils/scripts/mcp/*.sh - Shell scripts for calling MCPs",
+    "standards": ".vishkar-utils/.standards/*.md - Engineering standards for LLM reference",
+    "setup": ".vishkar-utils/scripts/setup/*.sh - Project setup utilities"
   }
 }
 ```
@@ -90,9 +90,9 @@ When a project registers, the response should include:
 {
   "next_steps": [
     "1. Save your API key to .env: VISHKAR_API_KEY=pk_xxx",
-    "2. Clone utilities: git clone https://github.com/premkalyan/enhanced-context-mcp.git vishkar-utils",
-    "3. Use helper scripts: ./vishkar-utils/scripts/mcp/jira.sh request.json",
-    "4. Read standards before implementation: vishkar-utils/.standards/"
+    "2. Clone utilities: git clone https://github.com/premkalyan/enhanced-context-mcp.git .vishkar-utils",
+    "3. Use helper scripts: ./.vishkar-utils/scripts/mcp/jira.sh request.json",
+    "4. Read standards before implementation: .vishkar-utils/.standards/"
   ]
 }
 ```

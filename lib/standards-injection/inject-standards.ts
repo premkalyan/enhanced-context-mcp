@@ -98,7 +98,7 @@ export function detectRelevantSections(task: string): StandardSection[] {
     sections.push('python');
   }
   
-  return [...new Set(sections)]; // Remove duplicates
+  return Array.from(new Set(sections)); // Remove duplicates
 }
 
 /**
