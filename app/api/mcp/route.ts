@@ -1057,6 +1057,15 @@ function handlePocBuildingGuide(args: { section?: string; page_type?: string }) 
   }
 }
 
+// MCP Server Info
+const SERVER_INFO = {
+  name: 'enhanced-context-mcp',
+  version: '1.6.0'
+};
+
+// MCP Protocol Version
+const PROTOCOL_VERSION = '2024-11-05';
+
 // Simple authentication check
 function isAuthenticated(request: NextRequest): boolean {
   const apiKey = request.headers.get('x-api-key');
@@ -1070,33 +1079,15 @@ function isAuthenticated(request: NextRequest): boolean {
   return true;
 }
 
-export async function POST(request: NextRequest) {
-  // Check authentication
-  if (!isAuthenticated(request)) {
-    return NextResponse.json(
-      { success: false, error: 'Authentication required. Provide X-API-Key header.' },
-      { status: 401 }
-    );
-  }
+// Execute tool and return result
+async function executeTool(toolName: string, args: any): Promise<{ success: boolean; result?: any; error?: string }> {
+  const enhancedContextService = ServiceFactory.createEnhancedContextService();
+  const agentService = ServiceFactory.createAgentService();
 
   try {
-    const body = await request.json();
-    const { tool, arguments: args } = body;
-
-    if (!tool) {
-      return NextResponse.json(
-        { success: false, error: 'Tool name is required' },
-        { status: 400 }
-      );
-    }
-
-    // Get services
-    const enhancedContextService = ServiceFactory.createEnhancedContextService();
-    const agentService = ServiceFactory.createAgentService();
-
     let result;
 
-    switch (tool) {
+    switch (toolName) {
       case 'get_started':
         result = handleGetStarted(args || {});
         break;
@@ -1119,20 +1110,14 @@ export async function POST(request: NextRequest) {
 
       case 'load_vishkar_agent':
         if (!args?.agent_id) {
-          return NextResponse.json(
-            { success: false, error: 'agent_id is required' },
-            { status: 400 }
-          );
+          return { success: false, error: 'agent_id is required' };
         }
         result = await agentService.loadVishkarAgent(args.agent_id);
         break;
 
       case 'validate_vishkar_agent_profile':
         if (!args?.agent_id) {
-          return NextResponse.json(
-            { success: false, error: 'agent_id is required' },
-            { status: 400 }
-          );
+          return { success: false, error: 'agent_id is required' };
         }
         result = await agentService.validateAgentProfile(args.agent_id, args.strict_mode || false);
         break;
@@ -1147,25 +1132,180 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { success: false, error: `Unknown tool: ${tool}` },
-          { status: 400 }
-        );
+        return { success: false, error: `Unknown tool: ${toolName}` };
     }
 
+    return { success: true, result };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // ============================================================
+    // MCP PROTOCOL HANDLERS (Streamable HTTP Transport)
+    // ============================================================
+
+    // 1. INITIALIZE - MCP handshake (no auth required for handshake)
+    if (body.method === 'initialize') {
+      console.log('MCP: Initialize request received');
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          protocolVersion: PROTOCOL_VERSION,
+          capabilities: {
+            tools: {}
+          },
+          serverInfo: SERVER_INFO
+        }
+      });
+    }
+
+    // 2. INITIALIZED - Client acknowledgment
+    if (body.method === 'notifications/initialized') {
+      console.log('MCP: Client initialized');
+      return new NextResponse(null, { status: 204 });
+    }
+
+    // 3. TOOLS/LIST - Return available tools (no auth for discovery)
+    if (body.method === 'tools/list') {
+      console.log('MCP: Tools list request');
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: { tools: TOOLS }
+      });
+    }
+
+    // 4. PING - Health check (no auth required)
+    if (body.method === 'ping') {
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {}
+      });
+    }
+
+    // ============================================================
+    // AUTHENTICATED ENDPOINTS (tools/call and legacy format)
+    // ============================================================
+
+    // Check authentication for tool execution
+    if (!isAuthenticated(request)) {
+      // Return MCP-format error if using MCP protocol
+      if (body.method === 'tools/call') {
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: body.id,
+          error: {
+            code: -32001,
+            message: 'Authentication required. Provide X-API-Key header.'
+          }
+        }, { status: 401 });
+      }
+      return NextResponse.json(
+        { success: false, error: 'Authentication required. Provide X-API-Key header.' },
+        { status: 401 }
+      );
+    }
+
+    // 5. TOOLS/CALL - Execute a tool (MCP protocol format)
+    if (body.method === 'tools/call') {
+      const toolName = body.params?.name;
+      const toolArgs = body.params?.arguments || {};
+
+      console.log(`MCP: Tool call - ${toolName}`);
+
+      if (!toolName) {
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: body.id,
+          error: {
+            code: -32602,
+            message: 'Invalid params: missing tool name'
+          }
+        });
+      }
+
+      const { success, result, error } = await executeTool(toolName, toolArgs);
+
+      if (!success) {
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: body.id,
+          error: {
+            code: -32601,
+            message: error || `Failed to execute tool: ${toolName}`,
+            data: { available_tools: TOOLS.map(t => t.name) }
+          }
+        });
+      }
+
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        }
+      });
+    }
+
+    // ============================================================
+    // BACKWARD COMPATIBLE HANDLER (existing HTTP API format)
+    // ============================================================
+
+    // Support old format: { tool: "...", arguments: {} }
+    const tool = body.tool;
+    const args = body.arguments || {};
+
+    if (tool) {
+      console.log(`HTTP API: Tool call - ${tool}`);
+
+      const { success, result, error } = await executeTool(tool, args);
+
+      if (!success) {
+        return NextResponse.json(
+          { success: false, error: error || `Unknown tool: ${tool}` },
+          { status: 400 }
+        );
+      }
+
+      // Return in JSON-RPC format if client sent jsonrpc field
+      if (body.jsonrpc) {
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
+        });
+      }
+
+      return NextResponse.json({ success: true, tool, result });
+    }
+
+    // No recognized format
     return NextResponse.json({
-      success: true,
-      tool,
-      result
-    });
+      error: 'Invalid request format',
+      hint: 'Use MCP protocol { method: "tools/call", params: { name: "...", arguments: {...} } } or HTTP API { tool: "...", arguments: {...} }',
+      available_tools: TOOLS.map(t => ({ name: t.name, description: t.description })),
+      mcp_methods: ['initialize', 'tools/list', 'tools/call', 'ping']
+    }, { status: 400 });
 
   } catch (error) {
     const err = error as Error;
-    console.error('MCP API Error:', err);
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
+    console.error('MCP endpoint error:', err);
+    return NextResponse.json({
+      jsonrpc: '2.0',
+      id: null,
+      error: {
+        code: -32603,
+        message: 'Internal server error',
+        data: { details: err.message }
+      }
+    }, { status: 500 });
   }
 }
 
