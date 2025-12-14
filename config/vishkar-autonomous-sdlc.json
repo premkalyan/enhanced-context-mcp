@@ -1,7 +1,7 @@
 {
   "name": "VISHKAR 13-Step Autonomous SDLC",
-  "version": "1.0.0",
-  "description": "Automated development lifecycle from story selection to completion with quality gates and human approval points",
+  "version": "1.1.0",
+  "description": "Automated development lifecycle from story selection to completion with quality gates, system review checkpoint, and human approval points",
 
   "overview": {
     "purpose": "Enable autonomous agents to execute the full software development lifecycle with minimal human intervention",
@@ -11,6 +11,13 @@
       "test_pass_rate": 90,
       "max_retries": 3,
       "escalation_trigger": "After 3 failed retries, escalate to human"
+    },
+    "system_review_checkpoint": {
+      "step": "2.5",
+      "name": "System Review",
+      "purpose": "Proactive architecture and security review between implementation and testing",
+      "agents": ["a-architect-review", "a-security-auditor", "a-code-reviewer"],
+      "benefit": "Catch architectural and security issues early, before testing begins"
     }
   },
 
@@ -88,6 +95,11 @@
       "wama_agent_ids": ["a-code-reviewer", "a-pr-orchestrator"],
       "owned_steps": [8],
       "responsibilities": ["3-phase PR review", "Security analysis", "Performance analysis"]
+    },
+    "system_review_agent": {
+      "wama_agent_ids": ["a-architect-review", "a-security-auditor", "a-code-reviewer"],
+      "owned_steps": ["2.5"],
+      "responsibilities": ["Architecture review", "Security audit", "Code quality assessment", "Early issue detection"]
     },
     "doc_agent": {
       "wama_agent_ids": ["a-documentation-specialist"],
@@ -175,8 +187,77 @@
         "jira_mcp": ["add_comment"]
       },
       "handoff": {
-        "to": "Dev Agent (Step 3)",
+        "to": "System Review Agent (Step 2.5)",
         "payload": ["branchName", "filesChanged", "qualityScore"]
+      }
+    },
+    {
+      "step": "2.5",
+      "name": "System Review",
+      "short_name": "Architecture & Security Review",
+      "owner_agent": "System Review Agent",
+      "wama_agents": ["a-architect-review", "a-security-auditor", "a-code-reviewer"],
+      "automated": true,
+      "gate": {
+        "type": "Quality Gate",
+        "threshold": "No critical issues",
+        "action_on_fail": "Return to Step 2 with findings"
+      },
+      "description": "Proactive architecture and security review to catch issues before testing begins",
+      "entry_criteria": [
+        "Implementation complete",
+        "Self-quality score >= 7/10",
+        "Linting and type checks pass"
+      ],
+      "exit_criteria": [
+        "Architecture review complete",
+        "Security audit complete",
+        "No critical architectural issues",
+        "No security vulnerabilities found",
+        "Code quality validated"
+      ],
+      "activities": [
+        "Review code architecture against design patterns",
+        "Verify separation of concerns",
+        "Check for security vulnerabilities (OWASP Top 10)",
+        "Validate error handling patterns",
+        "Review API design consistency",
+        "Check for performance anti-patterns",
+        "Generate improvement recommendations"
+      ],
+      "review_phases": [
+        {
+          "phase": 1,
+          "name": "Architecture Review",
+          "agent": "a-architect-review",
+          "focus": ["Design patterns", "Separation of concerns", "Scalability", "Maintainability"]
+        },
+        {
+          "phase": 2,
+          "name": "Security Audit",
+          "agent": "a-security-auditor",
+          "focus": ["OWASP Top 10", "Authentication/Authorization", "Input validation", "Data protection"]
+        },
+        {
+          "phase": 3,
+          "name": "Code Quality Review",
+          "agent": "a-code-reviewer",
+          "focus": ["Code clarity", "Error handling", "Best practices", "Technical debt"]
+        }
+      ],
+      "quality_check": {
+        "type": "multi_agent_review",
+        "agents": ["a-architect-review", "a-security-auditor", "a-code-reviewer"],
+        "pass_criteria": "No critical or high severity issues",
+        "action_on_fail": "Return to implementation with detailed findings"
+      },
+      "mcp_tools": {
+        "enhanced_context_mcp": ["load_vishkar_agent", "load_enhanced_context"],
+        "jira_mcp": ["add_comment"]
+      },
+      "handoff": {
+        "to": "Dev Agent (Step 3)",
+        "payload": ["architectureFindings", "securityFindings", "codeQualityFindings", "overallScore", "criticalIssues"]
       }
     },
     {
@@ -635,6 +716,7 @@
   "recommended_tools_by_step": {
     "1": {"mcp": "JIRA MCP", "tools": ["search_issues", "transition_issue", "add_comment"]},
     "2": {"mcp": "Enhanced Context MCP", "tools": ["load_enhanced_context"]},
+    "2.5": {"mcp": "Enhanced Context MCP", "tools": ["load_vishkar_agent", "load_enhanced_context"], "agents": ["a-architect-review", "a-security-auditor", "a-code-reviewer"]},
     "3": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
     "4": {"mcp": "JIRA MCP + Enhanced Context", "tools": ["get_issue_details", "load_enhanced_context"]},
     "5": {"mcp": "Enhanced Context MCP", "tools": ["load_enhanced_context"]},
