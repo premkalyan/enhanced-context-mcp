@@ -553,6 +553,83 @@ const TOOLS = [
       },
       required: ['tool']
     }
+  },
+  {
+    name: 'validate_sdlc_preconditions',
+    description: 'Validates SDLC prerequisites before implementation. Call this BEFORE writing any code. Returns blockers if prerequisites are not met, preventing agents from proceeding until resolved.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task_type: {
+          type: 'string',
+          enum: ['implementation', 'bugfix', 'refactor', 'test', 'documentation'],
+          description: 'Type of task being performed'
+        },
+        files_to_change: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Files that will be modified (for tech-stack detection and review requirements)'
+        },
+        jira_ticket: {
+          type: 'string',
+          description: 'JIRA ticket key (e.g., PROJ-123) - optional but recommended for full validation'
+        }
+      },
+      required: ['task_type']
+    }
+  },
+  {
+    name: 'get_review_template',
+    description: 'Get structured review checklist for 4-Angle Internal Review. Returns specific checks based on review type and file patterns being changed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        review_type: {
+          type: 'string',
+          enum: ['architecture', 'security', 'code_quality', 'tech_stack', 'all'],
+          description: 'Type of review: architecture (design patterns), security (OWASP), code_quality (SOLID/DRY), tech_stack (framework-specific), all (complete 4-angle)'
+        },
+        file_patterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'File patterns being reviewed (e.g., ["backend/**/*.py", "api/routes/*.py"])'
+        },
+        include_standards_reference: {
+          type: 'boolean',
+          description: 'Include relevant .standards/ file references (default: true)'
+        }
+      },
+      required: ['review_type']
+    }
+  },
+  {
+    name: 'get_completion_checklist',
+    description: 'Returns mandatory steps before marking a task complete. Dynamically determines required reviews, tests, and documentation based on task type and files changed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task_type: {
+          type: 'string',
+          enum: ['implementation', 'bugfix', 'refactor', 'test', 'documentation'],
+          description: 'Type of task being completed'
+        },
+        files_changed: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Array of file paths that were modified'
+        },
+        jira_ticket: {
+          type: 'string',
+          description: 'JIRA ticket key for transition guidance'
+        },
+        reviews_completed: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Reviews already completed (e.g., ["architecture", "security"])'
+        }
+      },
+      required: ['task_type', 'files_changed']
+    }
   }
 ];
 
@@ -634,6 +711,28 @@ function handleGetStarted(args: { include_examples?: boolean }) {
           copilot: ".github/copilot-instructions.md"
         },
         usage: "Get config for your AI tool, save to project, tool reads .standards/ automatically"
+      },
+      // SDLC Enforcement Tools
+      sdlc_preconditions: {
+        tool: "validate_sdlc_preconditions",
+        description: "Gate check BEFORE implementation - validates standards exist, reviews planned, tests designed",
+        parameters: ["task_type", "files_to_change", "jira_ticket"],
+        when_to_use: "ALWAYS call before writing any code",
+        returns: "Blockers, applicable standards, required reviews, pre-implementation checklist"
+      },
+      review_templates: {
+        tool: "get_review_template",
+        description: "Structured checklists for 4-Angle Internal Review (Steps 3-6)",
+        review_types: ["architecture", "security", "code_quality", "tech_stack", "all"],
+        features: ["Checklist IDs (SEC-001, ARCH-001)", "Severity levels", "Standards references"],
+        when_to_use: "During Steps 3-6 of SDLC for structured reviews"
+      },
+      completion_checklist: {
+        tool: "get_completion_checklist",
+        description: "Mandatory steps before marking task complete - prevents premature closure",
+        parameters: ["task_type", "files_changed", "jira_ticket", "reviews_completed"],
+        checks: ["Required reviews passed", "Tests written/passing", "Documentation updated", "JIRA transitioned"],
+        when_to_use: "Before marking any task as Done"
       }
     },
 
@@ -670,6 +769,11 @@ function handleGetStarted(args: { include_examples?: boolean }) {
         { name: "PR & Review", steps: [12, 13, 14] },
         { name: "Merge & Deploy", steps: [15, 16, 17] }
       ],
+      enforcement_tools: {
+        before_implementation: "validate_sdlc_preconditions - Gate check for prerequisites",
+        during_review: "get_review_template - Structured checklists for Steps 3-6",
+        before_completion: "get_completion_checklist - Mandatory steps before Done"
+      },
       contextual_agent_selection: "Use get_contextual_agent to find the right specialist for Step 6",
       get_full_details: "Call get_sdlc_guidance with section='full'"
     },
@@ -2707,10 +2811,472 @@ Follow conventions specific to this project type when suggesting code.
   };
 }
 
+// Handler for Validate SDLC Preconditions - Gate check before implementation
+function handleValidateSdlcPreconditions(args: { task_type?: string; files_to_change?: string[]; jira_ticket?: string }) {
+  const { task_type = 'implementation', files_to_change = [], jira_ticket } = args;
+
+  // Define file pattern to standards/reviews mapping
+  const FILE_PATTERN_MAPPING: Record<string, { standards: string[]; reviews: string[] }> = {
+    'py': { standards: ['python.md', 'testing.md'], reviews: ['code_quality', 'security'] },
+    'fastapi': { standards: ['python.md', 'fastapi.md', 'security.md'], reviews: ['architecture', 'security', 'code_quality'] },
+    'api': { standards: ['fastapi.md', 'security.md'], reviews: ['architecture', 'security'] },
+    'tsx': { standards: ['frontend.md'], reviews: ['code_quality', 'tech_stack'] },
+    'ts': { standards: ['frontend.md'], reviews: ['code_quality'] },
+    'sql': { standards: ['database.md', 'security.md'], reviews: ['security', 'code_quality'] },
+    'alembic': { standards: ['database.md'], reviews: ['architecture'] },
+    'test': { standards: ['testing.md'], reviews: ['code_quality'] },
+    'terraform': { standards: ['security.md'], reviews: ['architecture', 'security'] },
+  };
+
+  // Determine applicable standards and reviews based on files
+  const detectApplicableContext = (files: string[]) => {
+    const standards = new Set<string>();
+    const reviews = new Set<string>();
+    const agents: string[] = [];
+
+    for (const file of files) {
+      const fileLower = file.toLowerCase();
+
+      // Python/FastAPI
+      if (fileLower.includes('api/') || fileLower.includes('routes/')) {
+        FILE_PATTERN_MAPPING.fastapi.standards.forEach(s => standards.add(s));
+        FILE_PATTERN_MAPPING.fastapi.reviews.forEach(r => reviews.add(r));
+        agents.push('a-fastapi-pro', 'a-backend-engineer');
+      } else if (fileLower.endsWith('.py')) {
+        FILE_PATTERN_MAPPING.py.standards.forEach(s => standards.add(s));
+        FILE_PATTERN_MAPPING.py.reviews.forEach(r => reviews.add(r));
+        agents.push('a-backend-engineer');
+      }
+
+      // Frontend
+      if (fileLower.endsWith('.tsx') || fileLower.endsWith('.jsx')) {
+        FILE_PATTERN_MAPPING.tsx.standards.forEach(s => standards.add(s));
+        FILE_PATTERN_MAPPING.tsx.reviews.forEach(r => reviews.add(r));
+        agents.push('a-frontend-developer', 'a-typescript-pro');
+      }
+
+      // Database
+      if (fileLower.includes('alembic') || fileLower.includes('migration')) {
+        FILE_PATTERN_MAPPING.alembic.standards.forEach(s => standards.add(s));
+        FILE_PATTERN_MAPPING.alembic.reviews.forEach(r => reviews.add(r));
+        agents.push('a-backend-engineer');
+      }
+
+      // Tests
+      if (fileLower.includes('test') || fileLower.includes('spec')) {
+        FILE_PATTERN_MAPPING.test.standards.forEach(s => standards.add(s));
+        FILE_PATTERN_MAPPING.test.reviews.forEach(r => reviews.add(r));
+        agents.push('a-test-automator');
+      }
+
+      // Infrastructure
+      if (fileLower.includes('terraform') || fileLower.endsWith('.tf')) {
+        FILE_PATTERN_MAPPING.terraform.standards.forEach(s => standards.add(s));
+        FILE_PATTERN_MAPPING.terraform.reviews.forEach(r => reviews.add(r));
+        agents.push('a-terraform-specialist');
+      }
+    }
+
+    // Add security review for all implementation tasks
+    if (task_type === 'implementation') {
+      reviews.add('security');
+      standards.add('security.md');
+    }
+
+    return {
+      standards: Array.from(standards),
+      reviews: Array.from(reviews),
+      agents: [...new Set(agents)]
+    };
+  };
+
+  const context = detectApplicableContext(files_to_change);
+
+  // Define blockers
+  const blockers: Array<{ type: string; severity: string; message: string; fix: string }> = [];
+
+  // Check for .standards/ directory (we can't actually check filesystem in serverless, so provide guidance)
+  blockers.push({
+    type: 'check_standards',
+    severity: 'warning',
+    message: 'Ensure .standards/ directory exists with relevant standard files',
+    fix: `If missing, run: get_engineering_standards({ format: 'files' }) and save to .standards/`
+  });
+
+  // Check lessons_learned.json
+  if (task_type === 'implementation' || task_type === 'bugfix') {
+    blockers.push({
+      type: 'check_lessons_learned',
+      severity: 'info',
+      message: 'Load .reviews/lessons_learned.json before implementation to avoid repeating past mistakes',
+      fix: 'Read the file if it exists, or create with empty {"lessons": []} structure'
+    });
+  }
+
+  // Build checklist
+  const checklist = {
+    standards_loaded: {
+      required: true,
+      files: context.standards.map(s => `.standards/${s}`),
+      action: 'Read these files before writing code'
+    },
+    lessons_learned_loaded: {
+      required: task_type === 'implementation' || task_type === 'bugfix',
+      file: '.reviews/lessons_learned.json',
+      action: 'Check for relevant past issues'
+    },
+    jira_ticket_valid: {
+      status: jira_ticket ? 'provided' : 'not_provided',
+      recommendation: jira_ticket ? `Verify ${jira_ticket} is in "In Progress" status` : 'Provide jira_ticket for full tracking'
+    },
+    required_reviews_identified: {
+      reviews: context.reviews,
+      agents: context.agents
+    }
+  };
+
+  return {
+    ready: blockers.filter(b => b.severity === 'critical').length === 0,
+    task_type,
+    files_to_change,
+    jira_ticket: jira_ticket || null,
+
+    blockers,
+    checklist,
+
+    applicable_context: {
+      standards: context.standards.map(s => ({ file: `.standards/${s}`, action: 'Must read before implementation' })),
+      reviews_required: context.reviews.map(r => ({
+        type: r,
+        step: r === 'architecture' ? 3 : r === 'security' ? 4 : r === 'code_quality' ? 5 : 6,
+        blocking_severities: ['critical', 'high']
+      })),
+      recommended_agents: context.agents
+    },
+
+    pre_implementation_steps: [
+      '1. Read applicable standards from .standards/',
+      '2. Load .reviews/lessons_learned.json if exists',
+      '3. Verify Jira ticket is In Progress',
+      '4. Identify reviewer agents for post-implementation',
+      '5. Begin implementation following standards'
+    ],
+
+    sdlc_reference: {
+      current_step: 2,
+      step_name: 'Implementation',
+      next_steps: [3, 4, 5, 6],
+      next_step_names: ['Architecture Review', 'Security Review', 'Code Quality Review', 'Tech-Stack Review']
+    }
+  };
+}
+
+// Handler for Review Templates - Structured checklists for 4-Angle Review
+function handleGetReviewTemplate(args: { review_type?: string; file_patterns?: string[]; include_standards_reference?: boolean }) {
+  const { review_type = 'all', file_patterns = [], include_standards_reference = true } = args;
+
+  // Define review checklists
+  const REVIEW_CHECKLISTS: Record<string, {
+    agent: string;
+    step: number;
+    focus_areas: string[];
+    checklist: Array<{ id: string; check: string; severity: 'critical' | 'high' | 'medium' | 'low' }>;
+    standards_reference: string[];
+  }> = {
+    architecture: {
+      agent: 'a-architect-review',
+      step: 3,
+      focus_areas: ['System design patterns', 'Component boundaries', 'Scalability', 'Technical debt'],
+      checklist: [
+        { id: 'ARCH-001', check: 'Component boundaries are well-defined and follow single responsibility', severity: 'high' },
+        { id: 'ARCH-002', check: 'No circular dependencies between modules', severity: 'critical' },
+        { id: 'ARCH-003', check: 'Appropriate abstraction layers (service, repository, etc.)', severity: 'medium' },
+        { id: 'ARCH-004', check: 'Scalability considerations addressed (stateless, cacheable)', severity: 'high' },
+        { id: 'ARCH-005', check: 'Error handling strategy consistent across components', severity: 'medium' },
+        { id: 'ARCH-006', check: 'Configuration externalized (no hardcoded values)', severity: 'high' },
+        { id: 'ARCH-007', check: 'Logging and observability hooks in place', severity: 'medium' }
+      ],
+      standards_reference: ['code_quality.md']
+    },
+    security: {
+      agent: 'a-security-auditor',
+      step: 4,
+      focus_areas: ['OWASP Top 10', 'Auth/AuthZ', 'Input validation', 'Secrets management'],
+      checklist: [
+        { id: 'SEC-001', check: 'All user inputs validated with Pydantic or equivalent', severity: 'critical' },
+        { id: 'SEC-002', check: 'No hardcoded secrets, API keys, or credentials', severity: 'critical' },
+        { id: 'SEC-003', check: 'SQL queries use parameterized queries or ORM (no raw SQL concatenation)', severity: 'critical' },
+        { id: 'SEC-004', check: 'Authentication required on sensitive endpoints', severity: 'critical' },
+        { id: 'SEC-005', check: 'Authorization checks verify user has permission for resource', severity: 'critical' },
+        { id: 'SEC-006', check: 'Sensitive data encrypted at rest and in transit', severity: 'high' },
+        { id: 'SEC-007', check: 'Rate limiting configured on public endpoints', severity: 'high' },
+        { id: 'SEC-008', check: 'Error messages do not leak internal details', severity: 'high' },
+        { id: 'SEC-009', check: 'CORS configured restrictively (not wildcard)', severity: 'high' },
+        { id: 'SEC-010', check: 'Dependencies checked for known vulnerabilities', severity: 'medium' }
+      ],
+      standards_reference: ['security.md']
+    },
+    code_quality: {
+      agent: 'a-code-reviewer',
+      step: 5,
+      focus_areas: ['SOLID principles', 'Clean code', 'DRY', 'Error handling'],
+      checklist: [
+        { id: 'QUAL-001', check: 'All functions have complete type hints', severity: 'high' },
+        { id: 'QUAL-002', check: 'Functions are single-purpose (< 30 lines recommended)', severity: 'medium' },
+        { id: 'QUAL-003', check: 'No code duplication (DRY principle)', severity: 'medium' },
+        { id: 'QUAL-004', check: 'Clear naming conventions followed', severity: 'medium' },
+        { id: 'QUAL-005', check: 'Error handling uses specific exceptions, not bare except', severity: 'high' },
+        { id: 'QUAL-006', check: 'Complex logic has explanatory comments', severity: 'low' },
+        { id: 'QUAL-007', check: 'No TODO/FIXME comments without linked tickets', severity: 'low' },
+        { id: 'QUAL-008', check: 'Imports organized (stdlib, third-party, local)', severity: 'low' },
+        { id: 'QUAL-009', check: 'No magic numbers (use named constants)', severity: 'medium' },
+        { id: 'QUAL-010', check: 'Async code does not block event loop', severity: 'critical' }
+      ],
+      standards_reference: ['code_quality.md', 'python.md']
+    },
+    tech_stack: {
+      agent: 'contextual',
+      step: 6,
+      focus_areas: ['Framework patterns', 'Performance', 'Async patterns', 'Caching'],
+      checklist: [
+        { id: 'TECH-001', check: 'Framework-specific best practices followed', severity: 'high' },
+        { id: 'TECH-002', check: 'Performance-critical paths optimized', severity: 'high' },
+        { id: 'TECH-003', check: 'Appropriate use of caching where beneficial', severity: 'medium' },
+        { id: 'TECH-004', check: 'Database queries optimized (N+1 queries avoided)', severity: 'high' },
+        { id: 'TECH-005', check: 'Connection pooling used for external services', severity: 'high' },
+        { id: 'TECH-006', check: 'Async patterns used correctly (await all I/O)', severity: 'critical' },
+        { id: 'TECH-007', check: 'Proper use of dependency injection', severity: 'medium' },
+        { id: 'TECH-008', check: 'Response models defined for all endpoints', severity: 'medium' }
+      ],
+      standards_reference: ['fastapi.md', 'database.md', 'frontend.md']
+    }
+  };
+
+  // Determine which review(s) to return
+  if (review_type === 'all') {
+    const allReviews = Object.entries(REVIEW_CHECKLISTS).map(([type, data]) => ({
+      review_type: type,
+      ...data,
+      standards_reference: include_standards_reference
+        ? data.standards_reference.map(s => `.standards/${s}`)
+        : undefined
+    }));
+
+    return {
+      description: 'Complete 4-Angle Internal Review checklists',
+      sdlc_steps: '3-6',
+      total_checks: allReviews.reduce((sum, r) => sum + r.checklist.length, 0),
+      blocking_rule: '0 Critical, 0 High issues allowed',
+      reviews: allReviews,
+      workflow: [
+        'Step 3: Run architecture review first',
+        'Step 4: Run security review (can parallel with 3)',
+        'Step 5: Run code quality review',
+        'Step 6: Run tech-stack review (agent selected by file patterns)',
+        'Step 7: Address all Critical/High findings before proceeding'
+      ],
+      findings_storage: '.reviews/findings/{task_id}_findings.json'
+    };
+  }
+
+  // Return specific review type
+  const reviewData = REVIEW_CHECKLISTS[review_type];
+  if (!reviewData) {
+    return {
+      error: `Unknown review type: ${review_type}`,
+      available_types: Object.keys(REVIEW_CHECKLISTS)
+    };
+  }
+
+  // For tech_stack, suggest contextual agent based on file patterns
+  let contextualAgent = reviewData.agent;
+  if (review_type === 'tech_stack' && file_patterns.length > 0) {
+    const hasBackend = file_patterns.some(p => p.includes('.py') || p.includes('api/'));
+    const hasFrontend = file_patterns.some(p => p.includes('.tsx') || p.includes('.jsx'));
+    const hasTerraform = file_patterns.some(p => p.includes('.tf') || p.includes('terraform'));
+
+    if (hasTerraform) contextualAgent = 'a-terraform-specialist';
+    else if (hasFrontend) contextualAgent = 'a-frontend-developer';
+    else if (hasBackend) contextualAgent = 'a-fastapi-pro';
+  }
+
+  return {
+    review_type,
+    agent: contextualAgent,
+    step: reviewData.step,
+    focus_areas: reviewData.focus_areas,
+    checklist: reviewData.checklist,
+    total_checks: reviewData.checklist.length,
+    critical_count: reviewData.checklist.filter(c => c.severity === 'critical').length,
+    high_count: reviewData.checklist.filter(c => c.severity === 'high').length,
+    blocking_rule: '0 Critical, 0 High issues required to proceed',
+    standards_reference: include_standards_reference
+      ? reviewData.standards_reference.map(s => `.standards/${s}`)
+      : undefined,
+    findings_format: {
+      file: '.reviews/findings/{task_id}_findings.json',
+      schema: {
+        task_id: 'string',
+        review_type: review_type,
+        findings: [{
+          id: 'SEC-001',
+          status: 'pass | fail | na',
+          severity: 'critical | high | medium | low',
+          details: 'Description of issue if failed',
+          line_numbers: [10, 15],
+          fix_suggestion: 'How to fix'
+        }],
+        summary: { critical: 0, high: 0, medium: 0, low: 0 },
+        blocking: false
+      }
+    }
+  };
+}
+
+// Handler for Completion Checklist - What's required before marking task complete
+function handleGetCompletionChecklist(args: {
+  task_type?: string;
+  files_changed?: string[];
+  jira_ticket?: string;
+  reviews_completed?: string[];
+}) {
+  const {
+    task_type = 'implementation',
+    files_changed = [],
+    jira_ticket,
+    reviews_completed = []
+  } = args;
+
+  // Analyze files to determine requirements
+  const hasApiChanges = files_changed.some(f => f.includes('api/') || f.includes('routes/') || f.includes('endpoint'));
+  const hasDbChanges = files_changed.some(f => f.includes('model') || f.includes('alembic') || f.includes('migration'));
+  const hasFrontendChanges = files_changed.some(f => f.endsWith('.tsx') || f.endsWith('.jsx') || f.includes('component'));
+  const hasTestChanges = files_changed.some(f => f.includes('test') || f.includes('spec'));
+  const hasSecurityRelevant = files_changed.some(f => f.includes('auth') || f.includes('security') || f.includes('password') || f.includes('token'));
+
+  // Determine required reviews based on file changes
+  const requiredReviews: Record<string, { required: boolean; reason: string; completed: boolean }> = {
+    architecture: {
+      required: hasApiChanges || hasDbChanges,
+      reason: hasApiChanges ? 'API endpoint changes detected' : hasDbChanges ? 'Database model changes detected' : 'Not required for this change',
+      completed: reviews_completed.includes('architecture')
+    },
+    security: {
+      required: hasApiChanges || hasSecurityRelevant || task_type === 'implementation',
+      reason: hasSecurityRelevant ? 'Security-relevant files modified' : hasApiChanges ? 'API changes require security review' : 'Standard implementation review',
+      completed: reviews_completed.includes('security')
+    },
+    code_quality: {
+      required: true,
+      reason: 'Always required for all code changes',
+      completed: reviews_completed.includes('code_quality')
+    },
+    tech_stack: {
+      required: task_type === 'implementation' || task_type === 'refactor',
+      reason: 'Framework-specific patterns should be verified',
+      completed: reviews_completed.includes('tech_stack')
+    }
+  };
+
+  // Determine required tests
+  const requiredTests: Record<string, { required: boolean; reason: string; coverage_threshold?: number }> = {
+    unit: {
+      required: task_type !== 'documentation',
+      reason: task_type === 'documentation' ? 'Documentation changes don\'t require unit tests' : 'All code changes require unit tests',
+      coverage_threshold: 80
+    },
+    integration: {
+      required: hasApiChanges || hasDbChanges,
+      reason: hasApiChanges ? 'API changes require integration tests' : hasDbChanges ? 'Database changes require integration tests' : 'Not required',
+    },
+    e2e: {
+      required: hasFrontendChanges && hasApiChanges,
+      reason: hasFrontendChanges && hasApiChanges ? 'Full-stack changes benefit from E2E tests' : 'Not required for this change',
+    }
+  };
+
+  // Determine required documentation
+  const requiredDocs: Array<{ type: string; required: boolean; reason: string }> = [];
+
+  if (hasApiChanges) {
+    requiredDocs.push({
+      type: 'API documentation',
+      required: true,
+      reason: 'New/modified endpoints should be documented'
+    });
+  }
+
+  if (hasDbChanges) {
+    requiredDocs.push({
+      type: 'Database schema docs',
+      required: true,
+      reason: 'Model changes should be documented'
+    });
+  }
+
+  // Calculate completion status
+  const pendingReviews = Object.entries(requiredReviews)
+    .filter(([_, v]) => v.required && !v.completed)
+    .map(([k, _]) => k);
+
+  const allReviewsComplete = pendingReviews.length === 0;
+
+  return {
+    task_type,
+    files_changed_count: files_changed.length,
+    jira_ticket: jira_ticket || 'not_provided',
+
+    completion_status: {
+      ready_to_complete: allReviewsComplete && !hasTestChanges,
+      blockers: pendingReviews.length > 0 ? pendingReviews.map(r => `${r} review not completed`) : [],
+      warnings: !hasTestChanges && task_type !== 'documentation' ? ['No test files in changes - ensure tests exist'] : []
+    },
+
+    required_reviews: requiredReviews,
+    pending_reviews: pendingReviews,
+
+    required_tests: requiredTests,
+
+    required_documentation: requiredDocs,
+
+    storage_requirements: {
+      findings_file: jira_ticket ? `.reviews/findings/${jira_ticket}_findings.json` : '.reviews/findings/{task_id}_findings.json',
+      lessons_learned: '.reviews/lessons_learned.json',
+      action: 'Save all Critical/High findings to lessons_learned.json for future reference'
+    },
+
+    jira_transitions: jira_ticket ? {
+      current: 'In Progress (assumed)',
+      on_reviews_complete: 'Ready for Testing',
+      on_tests_pass: 'Ready for PR Review',
+      on_pr_approved: 'Ready for Merge',
+      on_merge: 'Done'
+    } : {
+      note: 'Provide jira_ticket for transition guidance'
+    },
+
+    final_checklist: [
+      { step: 1, item: '4-Angle Review complete (0 Critical, 0 High)', status: allReviewsComplete ? 'done' : 'pending' },
+      { step: 2, item: 'All findings addressed or logged', status: 'verify' },
+      { step: 3, item: 'Tests written and passing (≥90% pass rate)', status: 'verify' },
+      { step: 4, item: 'Test coverage adequate (≥80%)', status: 'verify' },
+      { step: 5, item: 'Documentation updated if required', status: requiredDocs.length > 0 ? 'verify' : 'na' },
+      { step: 6, item: 'Lessons learned updated', status: 'verify' },
+      { step: 7, item: 'PR created with description', status: 'pending' }
+    ],
+
+    sdlc_reference: {
+      current_phase: 'Feedback/Testing',
+      remaining_steps: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      next_milestone: 'PR Creation (Step 12)'
+    }
+  };
+}
+
 // MCP Server Info
 const SERVER_INFO = {
   name: 'enhanced-context-mcp',
-  version: '2.3.0'
+  version: '2.4.0'
 };
 
 // MCP Protocol Version
@@ -2795,6 +3361,18 @@ async function executeTool(toolName: string, args: any): Promise<{ success: bool
 
       case 'get_tool_configuration':
         result = handleToolConfiguration(args || {});
+        break;
+
+      case 'validate_sdlc_preconditions':
+        result = handleValidateSdlcPreconditions(args || {});
+        break;
+
+      case 'get_review_template':
+        result = handleGetReviewTemplate(args || {});
+        break;
+
+      case 'get_completion_checklist':
+        result = handleGetCompletionChecklist(args || {});
         break;
 
       default:
