@@ -434,8 +434,8 @@ const TOOLS = [
       properties: {
         section: {
           type: 'string',
-          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'tools_by_step', 'severity_levels', 'storage_schemas', 'contextual_selection', 'full'],
-          description: 'Which section: overview (summary + thresholds), steps (all 17 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), tools_by_step (MCP tools per step), severity_levels (issue severity definitions), storage_schemas (findings/lessons storage), contextual_selection (file pattern rules), full (everything)'
+          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'tools_by_step', 'severity_levels', 'storage_schemas', 'contextual_selection', 'review_templates', 'full'],
+          description: 'Which section: overview (summary + thresholds), steps (all 17 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), tools_by_step (MCP tools per step), severity_levels (issue severity definitions), storage_schemas (findings/lessons storage), contextual_selection (file pattern rules), review_templates (4-Angle Review checklists for Steps 3-6), full (everything)'
         },
         step_number: {
           type: 'number',
@@ -656,7 +656,7 @@ function handleGetStarted(args: { include_examples?: boolean }) {
       sdlc: {
         tool: "get_sdlc_guidance",
         description: "17-step enhanced SDLC with 4-Angle Internal Review, agent mappings, and MCP integration",
-        sections: ["overview", "steps", "step", "agents", "mcp_servers", "handoff", "escalation", "tools_by_step", "severity_levels", "storage_schemas", "contextual_selection", "full"]
+        sections: ["overview", "steps", "step", "agents", "mcp_servers", "handoff", "escalation", "tools_by_step", "severity_levels", "storage_schemas", "contextual_selection", "review_templates", "full"]
       },
       contextual_agent: {
         tool: "get_contextual_agent",
@@ -1019,6 +1019,60 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
       15: { mcp: "External CI/CD", tools: [] },
       16: { mcp: "Human", tools: [] },
       17: { mcp: "JIRA MCP + Confluence MCP", tools: ["transition_issue", "add_comment", "add_worklog", "update_page"] }
+    },
+
+    // 4-Angle Review Templates (Steps 3-6) - Inline for quick reference
+    review_templates: {
+      description: "Structured review checklists for 4-Angle Internal Review",
+      usage: "Use during Steps 3-6 for consistent, thorough reviews",
+      tool_reference: "For detailed templates with severity levels, use: get_review_template({ review_type: 'all' })",
+      quick_checklists: {
+        architecture: {
+          step: 3,
+          agent: "a-architect-review",
+          key_checks: [
+            "ARCH-001: Component boundaries well-defined (HIGH)",
+            "ARCH-002: No circular dependencies (CRITICAL)",
+            "ARCH-003: Appropriate abstraction layers (MEDIUM)",
+            "ARCH-004: Scalability addressed (HIGH)",
+            "ARCH-005: Error handling consistent (MEDIUM)"
+          ]
+        },
+        security: {
+          step: 4,
+          agent: "a-security-auditor",
+          key_checks: [
+            "SEC-001: User inputs validated with Pydantic (CRITICAL)",
+            "SEC-002: No hardcoded secrets (CRITICAL)",
+            "SEC-003: Parameterized queries only (CRITICAL)",
+            "SEC-004: Auth on sensitive endpoints (CRITICAL)",
+            "SEC-005: Authorization checks present (CRITICAL)"
+          ]
+        },
+        code_quality: {
+          step: 5,
+          agent: "a-code-reviewer",
+          key_checks: [
+            "QUAL-001: Complete type hints (HIGH)",
+            "QUAL-002: Functions single-purpose (MEDIUM)",
+            "QUAL-003: No code duplication (MEDIUM)",
+            "QUAL-005: Specific exceptions used (HIGH)",
+            "QUAL-010: No blocking in async code (CRITICAL)"
+          ]
+        },
+        tech_stack: {
+          step: 6,
+          agent: "contextual",
+          key_checks: [
+            "TECH-001: Framework best practices (HIGH)",
+            "TECH-004: N+1 queries avoided (HIGH)",
+            "TECH-005: Connection pooling used (HIGH)",
+            "TECH-006: Async patterns correct (CRITICAL)",
+            "TECH-007: Dependency injection used (MEDIUM)"
+          ]
+        }
+      },
+      blocking_rule: "0 Critical, 0 High issues must remain after review"
     }
   };
 
@@ -1113,6 +1167,21 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
           tool: "get_contextual_agent",
           arguments: { file_paths: ["backend/src/main.py", "frontend/components/Button.tsx"] },
           response: "Returns a-fastapi-pro, a-backend-engineer, a-frontend-developer, a-typescript-pro"
+        }
+      };
+
+    case 'review_templates':
+      return {
+        section_description: "4-Angle Review Templates for Steps 3-6",
+        ...SDLC.review_templates,
+        detailed_tool: {
+          tool: "get_review_template",
+          description: "For full checklists with all IDs, severities, and standards references",
+          example: "get_review_template({ review_type: 'security' })"
+        },
+        enforcement_tools: {
+          before_implementation: "validate_sdlc_preconditions - Gate check prerequisites",
+          after_implementation: "get_completion_checklist - Verify all steps complete"
         }
       };
 
@@ -2927,7 +2996,22 @@ function handleValidateSdlcPreconditions(args: { task_type?: string; files_to_ch
     },
     jira_ticket_valid: {
       status: jira_ticket ? 'provided' : 'not_provided',
-      recommendation: jira_ticket ? `Verify ${jira_ticket} is in "In Progress" status` : 'Provide jira_ticket for full tracking'
+      recommendation: jira_ticket ? `Verify ${jira_ticket} is in "In Progress" status` : 'Provide jira_ticket for full tracking',
+      // JIRA status check - MUST verify before proceeding
+      jira_check: jira_ticket ? {
+        required: true,
+        mcp_call: {
+          endpoint: 'https://jira-mcp-pi.vercel.app/api/mcp',
+          method: 'tools/call',
+          tool: 'get_issue_details',
+          arguments: { issueKey: jira_ticket },
+          headers: { 'Authorization': 'Bearer {jira_token}', 'Content-Type': 'application/json' }
+        },
+        expected_status: ['In Progress', 'In Development', 'Coding'],
+        blocked_status: ['Done', 'Closed', 'Resolved', 'Ready for Testing', 'In Review'],
+        action_if_blocked: `Transition ${jira_ticket} to "In Progress" before starting implementation`,
+        action_if_not_started: `Transition ${jira_ticket} from "To Do" to "In Progress"`
+      } : null
     },
     required_reviews_identified: {
       reviews: context.reviews,
@@ -2935,7 +3019,26 @@ function handleValidateSdlcPreconditions(args: { task_type?: string; files_to_ch
     }
   };
 
+  // Add JIRA status as potential blocker
+  if (jira_ticket) {
+    blockers.push({
+      type: 'jira_status_check',
+      severity: 'critical',
+      message: `MUST verify ${jira_ticket} status is "In Progress" before coding`,
+      fix: `Call JIRA MCP: get_issue_details({ issueKey: "${jira_ticket}" }) and verify status`
+    });
+  }
+
   return {
+    // GATE CHECK - Do not proceed if any critical blockers
+    gate_check: {
+      can_proceed: blockers.filter(b => b.severity === 'critical').length === 0 || !jira_ticket,
+      critical_blockers: blockers.filter(b => b.severity === 'critical'),
+      message: jira_ticket
+        ? `⚠️ BLOCKING: Verify JIRA ${jira_ticket} is "In Progress" before writing any code`
+        : '⚠️ WARNING: No JIRA ticket provided - progress tracking will be limited'
+    },
+
     ready: blockers.filter(b => b.severity === 'critical').length === 0,
     task_type,
     files_to_change,
@@ -3221,15 +3324,62 @@ function handleGetCompletionChecklist(args: {
 
   const allReviewsComplete = pendingReviews.length === 0;
 
+  // Build blockers list
+  const blockers: Array<{ type: string; severity: string; message: string; action: string }> = [];
+
+  // Add review blockers
+  pendingReviews.forEach(review => {
+    blockers.push({
+      type: 'review_incomplete',
+      severity: 'BLOCKING',
+      message: `${review.toUpperCase()} review not completed`,
+      action: `Run get_review_template({ review_type: '${review}' }) and complete review`
+    });
+  });
+
+  // Add test blockers if no tests in changes
+  if (!hasTestChanges && task_type !== 'documentation') {
+    blockers.push({
+      type: 'tests_missing',
+      severity: 'BLOCKING',
+      message: 'No test files in changes - tests are required',
+      action: 'Add tests for changed code with ≥80% coverage'
+    });
+  }
+
+  // Check for JIRA
+  if (!jira_ticket) {
+    blockers.push({
+      type: 'jira_not_provided',
+      severity: 'WARNING',
+      message: 'No JIRA ticket provided - cannot track transitions',
+      action: 'Provide jira_ticket parameter for full workflow tracking'
+    });
+  }
+
+  const canComplete = blockers.filter(b => b.severity === 'BLOCKING').length === 0;
+
   return {
+    // GATE CHECK - Prominent blocking message
+    gate_check: {
+      can_mark_done: canComplete,
+      blocking_issues: blockers.filter(b => b.severity === 'BLOCKING').length,
+      message: canComplete
+        ? '✅ All required steps complete - task can be marked Done'
+        : `🚫 CANNOT MARK DONE: ${blockers.filter(b => b.severity === 'BLOCKING').length} blocking issue(s) remain`
+    },
+
     task_type,
     files_changed_count: files_changed.length,
     jira_ticket: jira_ticket || 'not_provided',
 
+    // Clear blockers section
+    blockers,
+
     completion_status: {
-      ready_to_complete: allReviewsComplete && !hasTestChanges,
-      blockers: pendingReviews.length > 0 ? pendingReviews.map(r => `${r} review not completed`) : [],
-      warnings: !hasTestChanges && task_type !== 'documentation' ? ['No test files in changes - ensure tests exist'] : []
+      ready_to_complete: canComplete,
+      total_blockers: blockers.filter(b => b.severity === 'BLOCKING').length,
+      total_warnings: blockers.filter(b => b.severity === 'WARNING').length
     },
 
     required_reviews: requiredReviews,
