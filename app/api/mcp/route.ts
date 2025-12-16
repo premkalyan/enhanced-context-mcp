@@ -604,7 +604,7 @@ const TOOLS = [
   },
   {
     name: 'get_completion_checklist',
-    description: 'Returns mandatory steps before marking a task complete. Dynamically determines required reviews, tests, and documentation based on task type and files changed.',
+    description: 'Returns mandatory steps before marking a task complete (Step 17 Story Closure). Includes worklog requirement, cross-linking checks (JIRA-PR-Confluence), and review status. MANDATORY: worklog must be logged before marking Done.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -620,12 +620,41 @@ const TOOLS = [
         },
         jira_ticket: {
           type: 'string',
-          description: 'JIRA ticket key for transition guidance'
+          description: 'JIRA ticket key (e.g., PROJ-123)'
         },
         reviews_completed: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Reviews already completed (e.g., ["architecture", "security"])'
+          description: 'Reviews already completed (e.g., ["architecture", "security", "code_quality", "tech_stack"])'
+        },
+        // Step 17 Closure Parameters
+        worklog_logged: {
+          type: 'boolean',
+          description: 'Has time been logged via add_worklog? (MANDATORY before marking Done)'
+        },
+        time_spent: {
+          type: 'string',
+          description: 'Time spent on task in JIRA format (e.g., "1h 30m", "2d", "45m")'
+        },
+        pr_url: {
+          type: 'string',
+          description: 'GitHub/GitLab PR URL (e.g., https://github.com/owner/repo/pull/123)'
+        },
+        confluence_url: {
+          type: 'string',
+          description: 'Confluence documentation page URL if applicable'
+        },
+        pr_linked_to_jira: {
+          type: 'boolean',
+          description: 'Has the PR URL been added to the JIRA ticket?'
+        },
+        confluence_linked_to_jira: {
+          type: 'boolean',
+          description: 'Has the Confluence URL been added to the JIRA ticket?'
+        },
+        pr_linked_in_confluence: {
+          type: 'boolean',
+          description: 'Has the PR URL been added to the Confluence documentation page?'
         }
       },
       required: ['task_type', 'files_changed']
@@ -3242,12 +3271,28 @@ function handleGetCompletionChecklist(args: {
   files_changed?: string[];
   jira_ticket?: string;
   reviews_completed?: string[];
+  // NEW: Step 17 requirements
+  worklog_logged?: boolean;
+  time_spent?: string;
+  pr_url?: string;
+  confluence_url?: string;
+  pr_linked_to_jira?: boolean;
+  confluence_linked_to_jira?: boolean;
+  pr_linked_in_confluence?: boolean;
 }) {
   const {
     task_type = 'implementation',
     files_changed = [],
     jira_ticket,
-    reviews_completed = []
+    reviews_completed = [],
+    // Step 17 closure requirements
+    worklog_logged = false,
+    time_spent,
+    pr_url,
+    confluence_url,
+    pr_linked_to_jira = false,
+    confluence_linked_to_jira = false,
+    pr_linked_in_confluence = false
   } = args;
 
   // Analyze files to determine requirements
@@ -3357,6 +3402,64 @@ function handleGetCompletionChecklist(args: {
     });
   }
 
+  // ============================================================
+  // STEP 17: STORY CLOSURE REQUIREMENTS (MANDATORY)
+  // ============================================================
+
+  // WORKLOG - MANDATORY before marking Done
+  if (!worklog_logged) {
+    blockers.push({
+      type: 'worklog_missing',
+      severity: 'BLOCKING',
+      message: '⏱️ WORKLOG NOT LOGGED - Time tracking is MANDATORY before marking Done',
+      action: `Call JIRA MCP: add_worklog({ issueKey: '${jira_ticket || 'TICKET-XXX'}', timeSpent: '${time_spent || '1h 30m'}', comment: 'Task completed - [brief description]' })`
+    });
+  }
+
+  // PR LINK TO JIRA - MANDATORY for traceability
+  if (pr_url && !pr_linked_to_jira) {
+    blockers.push({
+      type: 'pr_not_linked_to_jira',
+      severity: 'BLOCKING',
+      message: '🔗 PR NOT LINKED TO JIRA - Add PR URL to JIRA ticket',
+      action: `Call JIRA MCP: add_comment({ issueKey: '${jira_ticket || 'TICKET-XXX'}', comment: 'PR: ${pr_url}' })`
+    });
+  } else if (!pr_url) {
+    blockers.push({
+      type: 'pr_url_missing',
+      severity: 'WARNING',
+      message: 'PR URL not provided - cannot verify cross-linking',
+      action: 'Provide pr_url parameter (e.g., https://github.com/owner/repo/pull/123)'
+    });
+  }
+
+  // CONFLUENCE LINK TO JIRA - MANDATORY for documentation navigation
+  if (confluence_url && !confluence_linked_to_jira) {
+    blockers.push({
+      type: 'confluence_not_linked_to_jira',
+      severity: 'BLOCKING',
+      message: '📄 CONFLUENCE NOT LINKED TO JIRA - Add documentation URL to JIRA ticket',
+      action: `Call JIRA MCP: add_comment({ issueKey: '${jira_ticket || 'TICKET-XXX'}', comment: 'Documentation: ${confluence_url}' })`
+    });
+  } else if (!confluence_url) {
+    blockers.push({
+      type: 'confluence_url_missing',
+      severity: 'WARNING',
+      message: 'Confluence URL not provided - cannot verify documentation linking',
+      action: 'Provide confluence_url parameter if documentation page exists'
+    });
+  }
+
+  // PR LINK IN CONFLUENCE - MANDATORY for implementation reference
+  if (confluence_url && pr_url && !pr_linked_in_confluence) {
+    blockers.push({
+      type: 'pr_not_in_confluence',
+      severity: 'BLOCKING',
+      message: '🔗 PR NOT LINKED IN CONFLUENCE - Add PR URL to documentation page',
+      action: `Call Confluence MCP: update_page - Add PR link (${pr_url}) to Implementation section`
+    });
+  }
+
   const canComplete = blockers.filter(b => b.severity === 'BLOCKING').length === 0;
 
   return {
@@ -3412,8 +3515,38 @@ function handleGetCompletionChecklist(args: {
       { step: 4, item: 'Test coverage adequate (≥80%)', status: 'verify' },
       { step: 5, item: 'Documentation updated if required', status: requiredDocs.length > 0 ? 'verify' : 'na' },
       { step: 6, item: 'Lessons learned updated', status: 'verify' },
-      { step: 7, item: 'PR created with description', status: 'pending' }
+      { step: 7, item: 'PR created with description', status: pr_url ? 'done' : 'pending' },
+      // Step 17 Closure Requirements
+      { step: 8, item: '⏱️ WORKLOG LOGGED (MANDATORY)', status: worklog_logged ? 'done' : 'BLOCKING' },
+      { step: 9, item: '🔗 PR URL added to JIRA ticket', status: pr_linked_to_jira ? 'done' : (pr_url ? 'BLOCKING' : 'pending') },
+      { step: 10, item: '📄 Confluence URL added to JIRA ticket', status: confluence_linked_to_jira ? 'done' : (confluence_url ? 'BLOCKING' : 'na') },
+      { step: 11, item: '🔗 PR URL added to Confluence page', status: pr_linked_in_confluence ? 'done' : (confluence_url && pr_url ? 'BLOCKING' : 'na') },
+      { step: 12, item: 'JIRA transitioned to Done', status: 'pending' }
     ],
+
+    // Step 17 Cross-Linking Summary
+    cross_linking: {
+      status: (pr_linked_to_jira && confluence_linked_to_jira && pr_linked_in_confluence) ? 'complete' : 'incomplete',
+      jira_to_pr: pr_linked_to_jira ? '✅' : '❌',
+      jira_to_confluence: confluence_linked_to_jira ? '✅' : '❌',
+      confluence_to_pr: pr_linked_in_confluence ? '✅' : '❌',
+      pr_url: pr_url || 'not_provided',
+      confluence_url: confluence_url || 'not_provided',
+      actions_needed: [
+        ...(pr_url && !pr_linked_to_jira ? [`Add PR link to JIRA: add_comment({ issueKey: '${jira_ticket}', comment: 'PR: ${pr_url}' })`] : []),
+        ...(confluence_url && !confluence_linked_to_jira ? [`Add Confluence link to JIRA: add_comment({ issueKey: '${jira_ticket}', comment: 'Docs: ${confluence_url}' })`] : []),
+        ...(confluence_url && pr_url && !pr_linked_in_confluence ? [`Add PR link to Confluence: update Implementation section with ${pr_url}`] : [])
+      ]
+    },
+
+    // Worklog Summary
+    worklog: {
+      logged: worklog_logged,
+      time_spent: time_spent || 'not_provided',
+      action: worklog_logged
+        ? '✅ Worklog recorded'
+        : `❌ CALL: add_worklog({ issueKey: '${jira_ticket || 'TICKET-XXX'}', timeSpent: '[Xh Ym]', comment: '[description]' })`
+    },
 
     sdlc_reference: {
       current_phase: 'Feedback/Testing',
@@ -3426,7 +3559,7 @@ function handleGetCompletionChecklist(args: {
 // MCP Server Info
 const SERVER_INFO = {
   name: 'enhanced-context-mcp',
-  version: '2.4.0'
+  version: '2.5.0'
 };
 
 // MCP Protocol Version

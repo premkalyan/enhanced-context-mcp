@@ -942,32 +942,93 @@
       "wama_agents": ["a-project-manager"],
       "automated": true,
       "gate": null,
-      "description": "Close task and update documentation",
+      "description": "Close task, log work time, and ensure complete cross-linking between artifacts",
       "entry_criteria": [
         "PR merged",
         "Deployment successful (if applicable)"
       ],
       "exit_criteria": [
         "JIRA task marked as Done",
-        "Confluence documentation updated",
-        "Time logged",
+        "Work time logged (MANDATORY)",
+        "PR link added to JIRA ticket",
+        "Confluence documentation updated with PR link",
+        "Confluence link added to JIRA ticket",
         "Release tagged (if applicable)"
       ],
       "actions": [
-        "Transition JIRA to Done",
-        "Update Confluence documentation",
-        "Log time if not already done",
-        "Tag release if applicable",
-        "Select next story from backlog"
+        "1. LOG WORK TIME - Call add_worklog with time spent on task",
+        "2. ADD PR LINK - Add PR URL as comment/link in JIRA ticket",
+        "3. UPDATE CONFLUENCE - Add PR link to documentation page",
+        "4. LINK CONFLUENCE TO JIRA - Add Confluence page URL to JIRA ticket",
+        "5. TRANSITION JIRA - Move ticket to Done status",
+        "6. TAG RELEASE - Tag release if applicable",
+        "7. SELECT NEXT STORY - Pick next story from backlog"
       ],
+      "cross_linking": {
+        "description": "Ensures all artifacts are interconnected for easy navigation",
+        "mandatory_links": [
+          {
+            "from": "JIRA Ticket",
+            "to": "GitHub PR",
+            "tool": "add_comment",
+            "format": "PR: {pr_url}"
+          },
+          {
+            "from": "JIRA Ticket",
+            "to": "Confluence Page",
+            "tool": "add_comment",
+            "format": "Documentation: {confluence_url}"
+          },
+          {
+            "from": "Confluence Page",
+            "to": "GitHub PR",
+            "tool": "update_page",
+            "format": "Include PR link in Implementation section"
+          }
+        ],
+        "optional_links": [
+          {
+            "from": "GitHub PR",
+            "to": "JIRA Ticket",
+            "note": "Usually auto-linked via PR title containing JIRA key"
+          }
+        ]
+      },
+      "worklog_requirement": {
+        "mandatory": true,
+        "description": "MUST log actual time spent on the task before marking Done",
+        "mcp_call": {
+          "tool": "add_worklog",
+          "arguments": {
+            "issueKey": "{jira_ticket}",
+            "timeSpent": "Time in format: 1h 30m, 2d, 45m",
+            "comment": "Brief description of work completed"
+          }
+        },
+        "validation": "Check that worklog entry exists for the current session",
+        "why_required": [
+          "Enables sprint velocity tracking",
+          "Provides data for future estimation",
+          "Creates accountability trail",
+          "Supports project reporting"
+        ]
+      },
       "jira_transition": "In Progress -> Done",
       "mcp_tools": {
-        "jira_mcp": ["get_issue_details", "transition_issue", "add_comment", "add_worklog"],
-        "confluence_mcp": ["create_page", "update_page"]
+        "jira_mcp": ["get_issue_details", "transition_issue", "add_comment", "add_worklog", "link_page_to_jira_issue"],
+        "confluence_mcp": ["create_page", "update_page", "link_page_to_jira_issue"]
       },
+      "completion_checklist": [
+        "✅ Work time logged via add_worklog",
+        "✅ PR URL added to JIRA ticket description or comment",
+        "✅ Confluence documentation created/updated",
+        "✅ Confluence URL added to JIRA ticket",
+        "✅ JIRA ticket transitioned to Done",
+        "✅ All findings from 4-Angle Review addressed (no blocking issues)"
+      ],
       "handoff": {
         "to": "PM Agent (Step 1) - Next Story",
-        "payload": ["completedTaskKey", "nextTaskKey", "sprintProgress"]
+        "payload": ["completedTaskKey", "nextTaskKey", "sprintProgress", "timeLogged"]
       }
     }
   ],
