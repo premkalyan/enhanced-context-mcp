@@ -2984,7 +2984,7 @@ function handleValidateSdlcPreconditions(args: { task_type?: string; files_to_ch
     return {
       standards: Array.from(standards),
       reviews: Array.from(reviews),
-      agents: [...new Set(agents)]
+      agents: Array.from(new Set(agents))
     };
   };
 
