@@ -1,6 +1,6 @@
 {
   "name": "VISHKAR 17-Step Enhanced SDLC",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Enhanced development lifecycle with 4-angle internal review after task implementation",
   "philosophy": "Quality at source - review early, fix early",
 
@@ -834,28 +834,91 @@
       "owner_agent": "Dev Agent",
       "wama_agents": ["a-backend-engineer", "a-frontend-developer"],
       "automated": true,
-      "gate": null,
-      "description": "Address PR review comments",
+      "gate": {
+        "type": "Quality Gate",
+        "threshold": "All PR-Agent suggestions triaged, blocking issues resolved",
+        "action_on_fail": "Continue fixing until all resolved"
+      },
+      "description": "Address PR review comments from PR-Agent - this is MANDATORY, not optional",
+      "important": "PR-Agent suggestions are ACTIONABLE ITEMS that must be triaged, implemented, and resolved before considering the PR complete",
       "entry_criteria": [
-        "PR review feedback received"
+        "PR review feedback received from Step 13",
+        "PR-Agent has posted comments/suggestions to the PR"
       ],
       "exit_criteria": [
-        "All review comments addressed",
+        "All PR-Agent suggestions evaluated (accept/reject with reason)",
+        "All accepted suggestions implemented",
+        "All review threads resolved",
         "Tests re-run and passing",
-        "Re-review requested"
+        "CI checks green",
+        "PR ready for human review/merge"
       ],
       "actions": [
-        "Address reviewer comments",
-        "Push updates",
-        "Re-run tests",
-        "Request re-review"
+        "1. FETCH SUGGESTIONS - Get all PR-Agent comments from the PR",
+        "2. TRIAGE EACH SUGGESTION - Evaluate and decide accept/reject with reason",
+        "3. IMPLEMENT ACCEPTED - Apply code changes for accepted suggestions",
+        "4. COMMIT INDIVIDUALLY - Each fix gets its own commit: 'fix: {description} (PR-Agent suggestion)'",
+        "5. RESOLVE THREADS - Mark each addressed thread as resolved",
+        "6. VERIFY CLEAN STATE - Ensure CI passes and no unresolved threads remain"
       ],
+      "pr_agent_feedback_loop": {
+        "mandatory": true,
+        "principle": "PR-Agent suggestions are not informational - they are actionable items that must be triaged, implemented, and resolved before considering the PR complete",
+        "phases": [
+          {
+            "phase": 1,
+            "name": "Fetch Suggestions",
+            "description": "Retrieve all PR-Agent comments and suggestions from the PR",
+            "command": "gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --jq '.[].body'",
+            "alternative": "gh pr view {pr_number} --comments"
+          },
+          {
+            "phase": 2,
+            "name": "Triage & Implement",
+            "description": "Review each suggestion and implement accepted ones",
+            "for_each_suggestion": [
+              "Read and understand the suggestion",
+              "Decide: ACCEPT (will implement) or REJECT (with documented reason)",
+              "For ACCEPT: Apply the code change",
+              "Commit with message: 'fix: {description} (PR-Agent suggestion)'",
+              "Push to branch"
+            ],
+            "commit_format": "fix: {brief_description} (PR-Agent suggestion)"
+          },
+          {
+            "phase": 3,
+            "name": "Resolve Threads",
+            "description": "Mark each addressed review thread as resolved",
+            "fetch_threads_command": {
+              "description": "Get unresolved thread IDs via GraphQL",
+              "command": "gh api graphql -f query='query { repository(owner: \"{owner}\", name: \"{repo}\") { pullRequest(number: {pr_number}) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { body } } } } } } }'"
+            },
+            "resolve_thread_command": {
+              "description": "Resolve a specific thread after implementing the suggestion",
+              "command": "gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: \"{thread_id}\"}) { thread { isResolved } } }'"
+            }
+          },
+          {
+            "phase": 4,
+            "name": "Verify Clean State",
+            "description": "Ensure PR is ready for merge",
+            "checks": [
+              "All CI checks passing",
+              "All review threads resolved",
+              "No pending suggestions unaddressed",
+              "PR ready for human review/merge"
+            ],
+            "verification_command": "gh pr checks {pr_number} && gh pr view {pr_number} --json reviewDecision,reviews"
+          }
+        ]
+      },
       "mcp_tools": {
-        "jira_mcp": ["add_comment"]
+        "jira_mcp": ["add_comment"],
+        "github_cli": ["gh api", "gh pr view", "gh pr checks"]
       },
       "handoff": {
         "to": "CI/CD Pipeline",
-        "payload": ["updatedPR", "testsRerun"]
+        "payload": ["updatedPR", "testsRerun", "resolvedThreads", "implementedSuggestions"]
       }
     },
     {
@@ -1134,7 +1197,7 @@
     "11": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
     "12": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
     "13": {"mcp": "PR-Agent MCP (Docker localhost:8188)", "tools": ["pr_describe", "pr_review", "pr_improve"]},
-    "14": {"mcp": "JIRA MCP", "tools": ["add_comment"]},
+    "14": {"mcp": "JIRA MCP + GitHub CLI", "tools": ["add_comment", "gh api", "gh pr view", "gh pr checks"], "note": "PR-Agent Feedback Loop - MANDATORY triage and implementation of suggestions"},
     "15": {"mcp": "External CI/CD", "tools": []},
     "16": {"mcp": "Human", "tools": []},
     "17": {"mcp": "JIRA MCP + Confluence MCP", "tools": ["transition_issue", "add_comment", "add_worklog", "update_page"]}

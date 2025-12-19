@@ -434,8 +434,8 @@ const TOOLS = [
       properties: {
         section: {
           type: 'string',
-          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'tools_by_step', 'severity_levels', 'storage_schemas', 'contextual_selection', 'review_templates', 'full'],
-          description: 'Which section: overview (summary + thresholds), steps (all 17 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), tools_by_step (MCP tools per step), severity_levels (issue severity definitions), storage_schemas (findings/lessons storage), contextual_selection (file pattern rules), review_templates (4-Angle Review checklists for Steps 3-6), full (everything)'
+          enum: ['overview', 'steps', 'step', 'agents', 'mcp_servers', 'handoff', 'escalation', 'pr_agent_feedback_loop', 'tools_by_step', 'severity_levels', 'storage_schemas', 'contextual_selection', 'review_templates', 'full'],
+          description: 'Which section: overview (summary + thresholds), steps (all 17 steps), step (specific step - requires step_number), agents (agent mapping), mcp_servers (Vercel + Docker MCPs), handoff (inter-agent protocol), escalation (failure handling), pr_agent_feedback_loop (MANDATORY PR-Agent suggestion triage/implementation for Step 14), tools_by_step (MCP tools per step), severity_levels (issue severity definitions), storage_schemas (findings/lessons storage), contextual_selection (file pattern rules), review_templates (4-Angle Review checklists for Steps 3-6), full (everything)'
         },
         step_number: {
           type: 'number',
@@ -886,10 +886,10 @@ function handleGetStarted(args: { include_examples?: boolean }) {
 function handleSdlcGuidance(args: { section?: string; step_number?: number; agent_role?: string }) {
   const { section = 'full', step_number, agent_role } = args;
 
-  // VISHKAR 17-Step Enhanced SDLC v2.0.0 (inline for serverless)
+  // VISHKAR 17-Step Enhanced SDLC v2.1.0 (inline for serverless)
   const SDLC = {
     name: "VISHKAR 17-Step Enhanced SDLC",
-    version: "2.0.0",
+    version: "2.1.0",
     description: "Enhanced development lifecycle with 4-Angle Internal Review after task implementation - Quality at source",
 
     overview: {
@@ -1007,7 +1007,7 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
       { step: 11, name: "Execute Tests", phase: "Testing", owner: "QA Agent", automated: true, gate: { type: "Quality Gate", threshold: ">=90% pass rate, >=80% coverage" }, description: "Run full test suite and verify quality threshold" },
       { step: 12, name: "PR Creation", phase: "PR & Review", owner: "Dev Agent", automated: true, gate: null, description: "Create pull request with review checklist", commit_format: "{PROJECT}-{number}: {summary}" },
       { step: 13, name: "PR Review (Formal)", phase: "PR & Review", owner: "PR Review Agent", automated: true, gate: null, description: "Formal PR review using PR-Agent (Docker)", review_phases: ["pr_describe", "pr_review", "pr_improve"], note: "PR-Agent runs on LOCAL DOCKER (port 8188)" },
-      { step: 14, name: "PR Feedback Implementation", phase: "PR & Review", owner: "Dev Agent", automated: true, gate: null, description: "Address PR review comments" },
+      { step: 14, name: "PR Feedback Implementation", phase: "PR & Review", owner: "Dev Agent", automated: true, gate: { type: "Quality Gate", threshold: "All PR-Agent suggestions triaged" }, description: "MANDATORY: Triage, implement, and resolve all PR-Agent suggestions", important: "PR-Agent suggestions are ACTIONABLE items, not informational", pr_agent_feedback_loop: { mandatory: true, phases: ["1. Fetch suggestions via gh api", "2. Triage each (accept/reject with reason)", "3. Implement accepted changes", "4. Commit: fix: {desc} (PR-Agent suggestion)", "5. Resolve threads via GraphQL", "6. Verify all CI checks pass"] } },
       { step: 15, name: "CI/CD Pipeline", phase: "Merge & Deploy", owner: "CI/CD (Automated)", automated: "Semi", gate: { type: "Quality Gate", threshold: "All checks green" }, description: "Execute automated CI/CD pipeline" },
       { step: 16, name: "Human Merge Approval", phase: "Merge & Deploy", owner: "Human", automated: false, gate: { type: "Human Gate", description: "ONLY mandatory human intervention point" }, description: "Final human sign-off before merge" },
       { step: 17, name: "Story Closure", phase: "Merge & Deploy", owner: "PM Agent", automated: true, gate: null, description: "Close task and update documentation", jira_transition: "In Progress -> Done" }
@@ -1030,6 +1030,64 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
       required_info: ["Failed step", "Retry count", "Failure reason", "Suggested remediation"]
     },
 
+    // PR-Agent Feedback Loop - MANDATORY for Step 14
+    pr_agent_feedback_loop: {
+      description: "After PR-Agent runs pr_review/pr_improve in Step 13, agents MUST complete this feedback loop in Step 14",
+      principle: "PR-Agent suggestions are ACTIONABLE ITEMS that must be triaged, implemented, and resolved - NOT just informational",
+      mandatory: true,
+      phases: [
+        {
+          phase: 1,
+          name: "Fetch Suggestions",
+          description: "Retrieve all PR-Agent comments and suggestions from the PR",
+          commands: [
+            "gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --jq '.[].body'",
+            "gh pr view {pr_number} --comments"
+          ]
+        },
+        {
+          phase: 2,
+          name: "Triage & Implement",
+          description: "Review each suggestion and implement accepted ones",
+          workflow: [
+            "1. Read and understand each suggestion",
+            "2. Decide: ACCEPT (will implement) or REJECT (with documented reason)",
+            "3. For ACCEPT: Apply the code change",
+            "4. Commit with message: 'fix: {description} (PR-Agent suggestion)'",
+            "5. Push to branch"
+          ],
+          commit_format: "fix: {brief_description} (PR-Agent suggestion)"
+        },
+        {
+          phase: 3,
+          name: "Resolve Threads",
+          description: "Mark each addressed review thread as resolved via GitHub GraphQL API",
+          fetch_threads: "gh api graphql -f query='query { repository(owner: \"{owner}\", name: \"{repo}\") { pullRequest(number: {pr_number}) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { body } } } } } } }'",
+          resolve_thread: "gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: \"{thread_id}\"}) { thread { isResolved } } }'"
+        },
+        {
+          phase: 4,
+          name: "Verify Clean State",
+          description: "Ensure PR is ready for merge",
+          checks: [
+            "All CI checks passing",
+            "All review threads resolved",
+            "No pending suggestions unaddressed",
+            "PR ready for human review/merge"
+          ],
+          command: "gh pr checks {pr_number} && gh pr view {pr_number} --json reviewDecision,reviews"
+        }
+      ],
+      exit_criteria: [
+        "All PR-Agent suggestions evaluated (accept/reject with reason)",
+        "All accepted suggestions implemented and committed",
+        "All review threads resolved",
+        "Tests re-run and passing",
+        "CI checks green",
+        "PR ready for human review/merge"
+      ]
+    },
+
     tools_by_step: {
       1: { mcp: "JIRA MCP", tools: ["search_issues", "transition_issue", "add_comment"] },
       2: { mcp: "Enhanced Context MCP", tools: ["load_enhanced_context"] },
@@ -1044,7 +1102,7 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
       11: { mcp: "JIRA MCP", tools: ["add_comment"] },
       12: { mcp: "JIRA MCP", tools: ["add_comment"] },
       13: { mcp: "PR-Agent MCP (Docker localhost:8188)", tools: ["pr_describe", "pr_review", "pr_improve"] },
-      14: { mcp: "JIRA MCP", tools: ["add_comment"] },
+      14: { mcp: "JIRA MCP + GitHub CLI", tools: ["add_comment", "gh api", "gh pr view", "gh pr checks"], note: "PR-Agent Feedback Loop - MANDATORY triage and implementation" },
       15: { mcp: "External CI/CD", tools: [] },
       16: { mcp: "Human", tools: [] },
       17: { mcp: "JIRA MCP + Confluence MCP", tools: ["transition_issue", "add_comment", "add_worklog", "update_page"] }
@@ -1161,6 +1219,13 @@ function handleSdlcGuidance(args: { section?: string; step_number?: number; agen
 
     case 'escalation':
       return SDLC.escalation;
+
+    case 'pr_agent_feedback_loop':
+      return {
+        ...SDLC.pr_agent_feedback_loop,
+        when_to_use: "Step 14 - immediately after PR-Agent runs pr_review/pr_improve",
+        summary: "MANDATORY: After PR-Agent review, fetch suggestions, triage each, implement accepted, resolve threads, verify CI green"
+      };
 
     case 'tools_by_step':
       return {
@@ -2722,7 +2787,33 @@ When reviewing code, verify:
 - [ ] Proper error handling
 - [ ] Test coverage adequate
 
-### Getting Standards
+## MCP Timeout Configuration
+
+VISHKAR MCPs are hosted on Vercel which has cold-start latency. Configure proper timeout settings.
+
+### Required in \`~/.claude/settings.json\`:
+\`\`\`json
+{
+  "env": {
+    "MCP_TIMEOUT": "120000"
+  }
+}
+\`\`\`
+
+Or set environment variable before running:
+\`\`\`bash
+export MCP_TIMEOUT=120000
+claude
+\`\`\`
+
+### Troubleshooting MCP Timeouts
+
+If MCP tools return "operation was aborted due to timeout":
+1. Verify \`MCP_TIMEOUT\` is set to at least 120000 (120 seconds)
+2. First call may be slow (Vercel cold start) - retry once
+3. Check \`claude mcp list\` shows servers as "Connected"
+
+## Getting Standards
 
 If \`.standards/\` directory doesn't exist, fetch from Enhanced Context MCP:
 \`\`\`bash
@@ -2859,6 +2950,99 @@ Follow conventions specific to this project type when suggesting code.
       instructions: 'Create .github directory if needed and save copilot-instructions.md inside.',
       auto_loaded: false,
       note: 'Copilot has limited support for project-level instructions'
+    },
+    'claude-settings': {
+      filename: 'settings.json',
+      location: '~/.claude/ (user home)',
+      content: JSON.stringify({
+        env: {
+          MCP_TIMEOUT: "120000"
+        }
+      }, null, 2),
+      instructions: 'Merge into ~/.claude/settings.json. Required for VISHKAR MCP timeout handling.',
+      auto_loaded: true,
+      note: 'MCP_TIMEOUT prevents Vercel cold-start timeouts. Value is in milliseconds (120000 = 120 seconds).',
+      merge_strategy: 'Add env.MCP_TIMEOUT to existing settings.json, do not overwrite other settings'
+    },
+    'reviews': {
+      directory: '.reviews/',
+      location: 'Project root',
+      description: 'SDLC review findings and lessons learned storage for LLM context loading',
+      structure: {
+        'README.md': `# .reviews/ Directory
+
+This directory stores review findings and lessons learned from the VISHKAR 17-Step SDLC process.
+
+## Purpose
+
+1. **Findings Storage**: Store review findings per task for traceability
+2. **Lessons Learned**: Accumulate learnings for LLM context loading
+3. **Continuous Improvement**: Prevent repeating past mistakes
+
+## Directory Structure
+
+\`\`\`
+.reviews/
+├── README.md              # This file
+├── lessons_learned.json   # Accumulated lessons (LLM loads at start of each task)
+└── findings/              # Per-task review findings
+    ├── PROJ-123_findings.json
+    ├── PROJ-456_findings.json
+    └── ...
+\`\`\`
+
+## Usage
+
+### At Start of Implementation (Step 2)
+\`\`\`bash
+# LLM reads lessons_learned.json to avoid past mistakes
+cat .reviews/lessons_learned.json
+\`\`\`
+
+### After 4-Angle Review (Step 7)
+\`\`\`bash
+# Save findings for the task
+# File: .reviews/findings/{JIRA_TICKET}_findings.json
+\`\`\`
+
+### After Learning New Lesson
+\`\`\`bash
+# Add to lessons_learned.json
+# Format: { "lessons": [{ "id": "LL-XXX", "category": "...", "lesson": "...", "date_added": "..." }] }
+\`\`\`
+
+## Schemas
+
+See Enhanced Context MCP: \`get_sdlc_guidance({ section: 'storage_schemas' })\`
+`,
+        'lessons_learned.json': JSON.stringify({
+          _schema_version: "1.0",
+          _description: "Lessons learned from past implementations. LLM loads this at start of each task to avoid repeating mistakes.",
+          _usage: "Add new lessons after discovering issues during review. Include category, context, and date.",
+          lessons: [
+            {
+              id: "LL-001",
+              category: "example",
+              lesson: "This is an example lesson. Replace with actual lessons from your projects.",
+              context: "Discovered during initial SDLC setup",
+              date_added: new Date().toISOString().split('T')[0]
+            }
+          ]
+        }, null, 2),
+        'findings/.gitkeep': '# This directory stores per-task findings from 4-angle reviews\n# Files are named: {JIRA_TICKET}_findings.json\n'
+      },
+      instructions: 'Create .reviews/ directory in project root with these files. LLM loads lessons_learned.json at start of each task.',
+      auto_loaded: false,
+      sdlc_integration: {
+        step_2: 'Load lessons_learned.json before implementation',
+        step_7: 'Store findings in findings/{task_id}_findings.json',
+        step_17: 'Add new lessons to lessons_learned.json if discovered'
+      },
+      setup_commands: [
+        'mkdir -p .reviews/findings',
+        'touch .reviews/findings/.gitkeep',
+        '# Copy README.md and lessons_learned.json from this config'
+      ]
     }
   };
 
@@ -2873,7 +3057,9 @@ Follow conventions specific to this project type when suggesting code.
         "2. Save the corresponding config file to your project",
         "3. Fetch engineering standards: get_engineering_standards({ format: 'files' })",
         "4. Save standards to .standards/ directory",
-        "5. AI tool will now reference standards before implementing code"
+        "5. Create .reviews/ directory: get_tool_configuration({ tool: 'reviews' })",
+        "6. Set MCP_TIMEOUT: get_tool_configuration({ tool: 'claude-settings' })",
+        "7. AI tool will now reference standards before implementing code"
       ],
       standards_injection_library: {
         location: "lib/standards-injection/",
@@ -2888,7 +3074,7 @@ Follow conventions specific to this project type when suggesting code.
   const config = configs[tool];
   if (!config) {
     return {
-      error: `Unknown tool: ${tool}. Available tools: claude, cursor, aider, goose, copilot, all`,
+      error: `Unknown tool: ${tool}. Available tools: claude, cursor, aider, goose, copilot, claude-settings, reviews, all`,
       available_tools: Object.keys(configs)
     };
   }
@@ -3011,8 +3197,39 @@ function handleValidateSdlcPreconditions(args: { task_type?: string; files_to_ch
     });
   }
 
+  // Environment checks for MCP connectivity
+  blockers.push({
+    type: 'check_mcp_timeout',
+    severity: 'warning',
+    message: 'Ensure MCP_TIMEOUT is configured to prevent Vercel cold start timeouts',
+    fix: 'Add to ~/.claude/settings.json: { "env": { "MCP_TIMEOUT": "120000" } }'
+  });
+
+  blockers.push({
+    type: 'check_mcp_connectivity',
+    severity: 'warning',
+    message: 'Verify all VISHKAR MCPs are connected before starting work',
+    fix: 'Run: claude mcp list - all MCPs should show "Connected" status'
+  });
+
+  blockers.push({
+    type: 'check_api_key',
+    severity: 'info',
+    message: 'Ensure VISHKAR_API_KEY is set in project .env for MCP authentication',
+    fix: 'Add VISHKAR_API_KEY=pk_xxx to project .env file (get key from Project Registry)'
+  });
+
   // Build checklist
   const checklist = {
+    environment_ready: {
+      required: true,
+      checks: [
+        { name: 'MCP_TIMEOUT', location: '~/.claude/settings.json', value: '120000', action: 'Prevents Vercel cold start timeouts' },
+        { name: 'MCP_CONNECTIVITY', command: 'claude mcp list', expected: 'All MCPs show "Connected"' },
+        { name: 'VISHKAR_API_KEY', location: 'project .env', action: 'Required for authenticated MCP calls' }
+      ],
+      verification_command: 'claude mcp list'
+    },
     standards_loaded: {
       required: true,
       files: context.standards.map(s => `.standards/${s}`),
@@ -3087,11 +3304,12 @@ function handleValidateSdlcPreconditions(args: { task_type?: string; files_to_ch
     },
 
     pre_implementation_steps: [
-      '1. Read applicable standards from .standards/',
-      '2. Load .reviews/lessons_learned.json if exists',
-      '3. Verify Jira ticket is In Progress',
-      '4. Identify reviewer agents for post-implementation',
-      '5. Begin implementation following standards'
+      '1. Verify environment: MCP_TIMEOUT=120000 in settings.json, run "claude mcp list" to confirm connectivity',
+      '2. Read applicable standards from .standards/',
+      '3. Load .reviews/lessons_learned.json if exists',
+      '4. Verify Jira ticket is In Progress',
+      '5. Identify reviewer agents for post-implementation',
+      '6. Begin implementation following standards'
     ],
 
     sdlc_reference: {
